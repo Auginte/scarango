@@ -1,6 +1,8 @@
 Just another Scala driver for ArangoDB
 ======================================
 
+[![Build Status](https://secure.travis-ci.org/aurelijusb/scarango.png?branch=master)](http://travis-ci.org/aurelijusb/scarango)
+
 Actor based Scala driver/client for ArangoDB.
 This driver is based on ArangoDB REST API, spray.io.
 
