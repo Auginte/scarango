@@ -14,7 +14,8 @@ object build extends sbt.Build {
     "io.spray" %% "spray-can" % sprayVersion,
     "io.spray" %% "spray-routing" % sprayVersion,
     "io.spray" %% "spray-client" % sprayVersion,
-    "io.spray" %% "spray-json" % "1.3.2"
+    "io.spray" %% "spray-json" % "1.3.2",
+    "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
   )
 
   lazy val scarangoLibrary = Project(id = buildName, base = file(".")) settings

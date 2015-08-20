@@ -47,3 +47,10 @@ During development
 ```
 sbt "~re-start"
 ```
+
+Test
+----
+
+```
+sbt test
+```
