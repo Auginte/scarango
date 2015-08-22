@@ -8,7 +8,7 @@ import scala.annotation.elidable
 /**
  * Logging infrastructure
  */
-trait Logging extends Actor {
+trait AkkaLogging extends Actor {
   val log = Logging(context.system, this)
 
   @elidable(elidable.FINER)

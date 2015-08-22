@@ -39,7 +39,7 @@ class IntegrationTest extends AkkaSpec {
       val client = system.actorOf(Props(new ClientGetVersion()))
       client ! "start"
 
-      system.awaitTermination(2 seconds)
+      system.awaitTermination(10 seconds)
       assert(version.isDefined)
       info("Version: " + version.get.version)
 

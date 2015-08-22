@@ -3,7 +3,7 @@ package com.auginte.scarango
 import akka.actor.{Actor, ActorRef}
 import akka.io.IO
 import akka.io.Tcp.{Close, ErrorClosed}
-import com.auginte.scarango.common.Logging
+import com.auginte.scarango.common.AkkaLogging
 import com.auginte.scarango.errors.{DatabaseClosed, UnexpectedDbResponse, UnexpectedRequest}
 import com.auginte.scarango.response.{Response, RestApiProcessor}
 import spray.can.Http
@@ -14,7 +14,7 @@ import spray.http.HttpResponse
  *
  * Routes messags and manages connection to ArrangoDB REST api
  */
-class Scarango extends Actor with Logging {
+class Scarango extends Actor with AkkaLogging {
   private var dbConnection: Option[ActorRef] = None
   private var processing: Option[Packet] = None
 
