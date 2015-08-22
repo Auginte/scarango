@@ -1,6 +1,11 @@
 language: scala
 scala:
   - 2.11.7
+env:
+  - VERSION=2.6.4
+before_script:
+  - chmod +x ./src/test/travis/arangodb.sh
+  - "./src/test/travis/arangodb.sh"
 jdk:
   - oraclejdk8
   - openjdk6
