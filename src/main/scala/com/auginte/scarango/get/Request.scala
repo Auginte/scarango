@@ -1,4 +1,4 @@
-package com.auginte.scarango.request
+package com.auginte.scarango.get
 
 import com.auginte.scarango.common.Authorisation
 import spray.http._
