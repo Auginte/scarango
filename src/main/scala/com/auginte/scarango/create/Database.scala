@@ -9,4 +9,6 @@ case class Database(name: String) extends Request {
   )
 
   override val uri: Uri = Uri("/_api/database")
+
+  override def toString: String = s"Create.Database($name)"
 }

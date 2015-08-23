@@ -7,4 +7,6 @@ import spray.http.Uri
  */
 case object Databases extends Request {
   override val uri: Uri = Uri("/_api/database")
+
+  override def toString: String = "Get.Databases"
 }

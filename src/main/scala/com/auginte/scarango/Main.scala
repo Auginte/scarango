@@ -18,7 +18,7 @@ object Main extends App {
 
     private def received(): Unit = {
       receivedCount = receivedCount + 1
-      if (receivedCount == 3) {
+      if (receivedCount == 5) {
         context.system.shutdown()
       }
     }
@@ -28,6 +28,8 @@ object Main extends App {
         val db = system.actorOf(Props[Scarango])
         db ! get.Version
         db ! create.Database(dbName)
+        db ! get.Databases
+        db ! remove.Database(dbName)
         db ! get.Databases
 
       case Response(v: response.Version, _) =>
@@ -40,6 +42,10 @@ object Main extends App {
 
       case Response(d: response.Databases, _) =>
         println("[OK] Got Databases: " + d.result.mkString(", "))
+        received()
+
+      case Response(response.Removed(remove.Database(name), _), _) =>
+        println("[OK] Removed database: " + name)
         received()
 
       case e: ScarangoError =>
