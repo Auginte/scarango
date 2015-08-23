@@ -25,7 +25,7 @@ object build extends sbt.Build {
       version := buildVersion,
       scalaVersion := buildScalaVersion,
       scalacOptions := buildOptions,
-      mainClass := Some("com.auginte.scarango"),
+      mainClass := Some("com.auginte.scarango.Main"),
       libraryDependencies ++= buildDependencies,
       spray.revolver.RevolverPlugin.Revolver.settings
     )
