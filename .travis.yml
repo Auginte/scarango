@@ -1,11 +1,25 @@
 language: scala
 scala:
   - 2.11.7
+
+# Setup ArangoDB
 env:
   - VERSION=2.6.5
 before_script:
   - chmod +x ./src/test/travis/arangodb.sh
   - "./src/test/travis/arangodb.sh"
+
+# Tricks to avoid unnecessary cache updates
+after_script:
+  - find $HOME/.sbt -name "*.lock" | xargs rm
+  - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+
+# These directories are cached to S3 at the end of the build
+cache:
+  directories:
+    - $HOME/.ivy2/cache
+    - $HOME/.sbt/boot/
+
 jdk:
   - oraclejdk8
   - openjdk6
