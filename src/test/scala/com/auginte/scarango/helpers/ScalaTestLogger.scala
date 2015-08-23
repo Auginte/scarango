@@ -31,8 +31,10 @@ class ScalaTestLogger extends Actor {
           proxy.alert(s"[${level(other.level)}] ${other.message}")
       }
       val a = event
-      proxy.system.shutdown()
-      proxy.system.awaitTermination(10 seconds)
+      proxy.lastSystem.foreach { system =>
+        system.shutdown()
+        system.awaitTermination(10 seconds)
+      }
       proxy.fail("Error in logs")
     case None =>
       println(s"         [${level(event.level)}] ${event.message}")

@@ -1,7 +1,18 @@
 package com.auginte.scarango.errors
 
-import com.auginte.scarango.get.Request
-
-case class UnexpectedRequest(raw: Any, lastRequest: Request)
-  extends ScarangoError("Request not supported by wrapper. Passing object instead of instance?")
-  with UnprocessedRequest
+/**
+ * Error not directly related to ArangoDB REST api response
+ *
+ * Common error is to use:
+ * {{{
+ *   db ! get.Version
+ * }}}
+ * instead of
+ * {{{
+ *   db ! get.Version()
+ * }}}
+ *
+ * See `raw` for context
+ */
+case class UnexpectedRequest(raw: Any)
+  extends ScarangoError("unexpected state. Passing object instead of instance?")

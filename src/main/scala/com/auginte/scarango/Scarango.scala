@@ -2,81 +2,89 @@ package com.auginte.scarango
 
 import akka.actor.{Actor, ActorRef}
 import akka.io.IO
-import akka.io.Tcp.{Close, ErrorClosed}
+import akka.io.Tcp.Close
 import com.auginte.scarango.common.AkkaLogging
-import com.auginte.scarango.errors.{DatabaseClosed, UnexpectedDbResponse, UnexpectedRequest}
+import com.auginte.scarango.errors.{ConnectionError, UnexpectedResponse}
 import com.auginte.scarango.response.{Response, RestApiProcessor}
 import spray.can.Http
 import spray.http.HttpResponse
 
+import scala.collection.immutable.Queue
+
 /**
- * ArangoDatabase wrapper.
+ * Actor for ArrangoDB REST API.
  *
- * Routes messags and manages connection to ArrangoDB REST api
+ * Routes messages and manages connection to ArrangoDB REST api.
+ *
+ * On error [[com.auginte.scarango.errors.UnprocessedRequest]] is returned and next request is processed.
+ * It is up to client to handle error and resend.
+ *
+ * For other errors, [[com.auginte.scarango.errors.ScarangoError]] is returned to client.
+ * For client actor errors, debug information is saved to `akka` logs.
  */
 class Scarango extends Actor with AkkaLogging {
+  private var connectionEstablished = false
   private var dbConnection: Option[ActorRef] = None
-  private var processing: Option[Packet] = None
+  private var queue: Queue[Packet] = Queue()
+
+  // Main flow:
+  //  User request     -> Queue -> Connection -> ArangoDB REST API
+  //                               Connection <- ArangoDB REST API
+  //                      Queue ---------------> ArangoDB REST API
+  //  Response to user <- Queue <--------------- ArangoDB REST API
+  //  User finishes                Connection -> ArangoDB REST API
 
   private case class Packet(client: ActorRef, request: get.Request)
 
   override def receive: Receive = {
-    // Supported requests
     case r: get.Request =>
       debug("Saving request", r)
-      request(sender(), r)
+      requestToQueue(sender(), r)
+      requestToDatabase()
 
-    // Low level HTTP connection to ArangoDB REST API
-    case Http.Connected(remote, local) => processing match {
-      case Some(Packet(client, request)) =>
-        debug("Connection established. Sending", local, remote, request.uri, request)
-        sender() ! request.http
-      case None =>
-        error("Connection established, but no requests to process")
-    }
-    case raw: HttpResponse if raw.status.isSuccess && processing.isDefined =>
-      debug("Response from ArangoDb. Parsing", raw)
-      processResponse(raw, processing.get)
-      debug("Closing ArangoDb connection")
-      sender() ! Close
-    case e: ErrorClosed =>
-      dbConnection = None
-      processing match {
-        case Some(Packet(client, message)) =>
-          client ! DatabaseClosed(e, message)
-        case None =>
-          error("Connection closed and no client attached", e)
-      }
-    case raw: Any if processing.isDefined && sender() == processing.get.client =>
-      sender() ! UnexpectedRequest(raw, processing.get.request)
-    case raw: Any if processing.isDefined =>
-      processing.get.client ! UnexpectedDbResponse(raw, processing.get.request)
-      processing = None
-    case raw: Any =>
-      error("Unexpected state and no client attached. Passing object instead of instance?", raw)
+    case Http.Connected(remote, local) =>
+      debug("Connected to ArangoDB", local, remote)
+      updateHost(sender())
+      requestToDatabase()
+
+    case raw: HttpResponse if raw.status.isSuccess =>
+      debug("Received", raw.entity)
+      responseToClient(raw)
+      requestToDatabase()
+
+    case raw: HttpResponse if raw.status.isFailure =>
+      debug("Received error", raw.status)
+      errorToClient(raw)
+      requestToDatabase()
+
+    case connectionData if queue.nonEmpty =>
+      debug("Received unexpected", connectionData)
+      errorToClient(connectionData)
+
+    case other =>
+      error("Unexpected state", other)
   }
 
-  /**
-   * Save current request as processing, so result could returned to original client.
-   *
-   * Creates new connection or sends packet immediately if already connected to ArangoDB REST API.
-   */
-  private def request(client: ActorRef, message: get.Request): Unit = {
-    processing = Some(Packet(client, message))
-    dbConnection match {
-      case Some(connection) =>
-        debug("Connected. Sending now", message)
-        connection ! message // Wait for HttpResponse
-      case None =>
-        val connection = connect
-        debug("First connection. Connecting", connection)
-        dbConnection = Some(connection) // Wait for Http.Connected
-    }
+  private def requestToQueue(client: ActorRef, request: get.Request): Unit = {
+    queue = queue.enqueue(Packet(client, request))
+    debug("Saved to queue", request, queue.size)
   }
 
-  /**
-   * Connection to default ArangoDB REST API instance
-   */
+  private def requestToDatabase(): Unit = dbConnection match {
+    case Some(connection) if connectionEstablished => queue.dequeueOption match {
+      case Some((packet, tail)) =>
+        debug("Sending", packet.request)
+        connection ! packet.request.http
+      case None =>
+        debug("Queue empty. Waiting")
+    }
+    case Some(connection) if !connectionEstablished =>
+      debug("Still connecting... Keeping queue the same", connection)
+    case None =>
+      debug("Connecting to ArangoDB")
+      dbConnection = Some(connect)
+  }
+
   private def connect: ActorRef = {
     implicit val system = context.system
     val restApi = IO(Http)
@@ -84,9 +92,48 @@ class Scarango extends Actor with AkkaLogging {
     restApi
   }
 
-  private def processResponse(raw: HttpResponse, packet: Packet) = {
-    val parsed = RestApiProcessor.process(packet.request, raw)
-    debug("Parsed response object", parsed)
-    packet.client ! Response(parsed, packet.request)
+  private def updateHost(connectionActor: ActorRef): Unit = {
+    dbConnection = Some(connectionActor)
+    connectionEstablished = true
+  }
+
+  private def responseToClient(raw: HttpResponse): Unit = queue.dequeueOption match {
+    case Some((Packet(client, request), tail)) =>
+      val parsed = RestApiProcessor.process(request, raw)
+      debug("Parsed", parsed)
+      client ! Response(parsed, request)
+      queue = tail
+    case None =>
+      error("No client to receive", raw)
+  }
+
+  private def errorToClient(raw: HttpResponse): Unit = queue.dequeueOption match {
+    case Some((Packet(client, request), tail)) =>
+      debug("Pass to client to handle", request)
+      client ! UnexpectedResponse(raw, request)
+      queue = tail
+    case None =>
+      error("No client to recover from ArangoDB API error", raw)
+  }
+
+  private def errorToClient(raw: Any): Unit = queue.dequeueOption match {
+    case Some((Packet(client, request), tail)) =>
+      debug("Pass to client to handle", request)
+      client ! ConnectionError(raw, request)
+      queue = tail
+    case None =>
+      error("No client to recover from ArangoDB connection error", raw)
+  }
+
+  @throws[Exception](classOf[Exception])
+  override def postStop(): Unit = {
+    dbConnection match {
+      case Some(connection) if connectionEstablished =>
+        debug("Closing ArangoDb connection")
+        dbConnection.get ! Close
+      case None =>
+        debug("ArangoDb connection already closed")
+    }
+    super.postStop()
   }
 }

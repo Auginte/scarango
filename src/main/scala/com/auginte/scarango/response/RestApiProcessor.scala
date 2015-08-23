@@ -14,6 +14,9 @@ object RestApiProcessor {
     case _: get.Version =>
       implicit val versionFormat = jsonFormat2(Version)
       JsonParser(rawResponse.entity.asString).convertTo[Version]
+    case _: get.Databases =>
+      implicit val format = jsonFormat3(Databases)
+      JsonParser(rawResponse.entity.asString).convertTo[Databases]
     case any =>
       RawResponse(rawResponse)
   }

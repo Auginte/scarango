@@ -15,7 +15,13 @@ trait AkkaSpec extends WordSpec {
     """.stripMargin
   )
 
-  implicit val system:ActorSystem = ActorSystem("TestVersion", testConfig)
+  var lastSystem: Option[ActorSystem] = None
+
+  def akkaSystem(name: String = "TestSystem"): ActorSystem = {
+    val system = ActorSystem(name, testConfig)
+    lastSystem = Some(system)
+    system
+  }
 
   override def info: Informer = super.info
 
