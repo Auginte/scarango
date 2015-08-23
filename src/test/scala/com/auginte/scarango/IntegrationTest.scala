@@ -1,9 +1,10 @@
 package com.auginte.scarango
 
 import akka.actor._
+import com.auginte.scarango.common.TestKit
 import com.auginte.scarango.errors.ScarangoError
 import com.auginte.scarango.helpers.AkkaSpec
-import com.auginte.scarango.response.{Databases, Response, Version}
+import com.auginte.scarango.response.{Database, Databases, Response, Version}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -86,6 +87,53 @@ class IntegrationTest extends AkkaSpec {
       assert(databases.isDefined)
       info("Databases: " + databases.get.result.mkString(", "))
       assert(databases.get.result.contains("_system"))
+      assert(databases.get.code === 200)
+      assert(!databases.get.error)
+    }
+
+    "create new database" in {
+      val system = akkaSystem("TestCreateDatabase")
+      val dbName = TestKit.unique
+      var database: Option[Database] = None
+      var databases: Option[Databases] = None
+
+      class ClientMultiple extends Actor {
+        override def receive: Receive = {
+          case "start" =>
+            val db = system.actorOf(Props(new Scarango()))
+            db ! create.Database(dbName)
+            db ! get.Databases
+
+          case Response(d: response.Database, _) =>
+            database = Some(d)
+
+          case Response(d: response.Databases, _) =>
+            databases = Some(d)
+            system.shutdown() // Testing, if it is second
+
+          case e: ScarangoError =>
+            fail("[ScarangoError] " + e.getMessage)
+            context.system.shutdown()
+
+          case other =>
+            fail("[UNEXPECTED] " + other)
+            context.system.shutdown()
+        }
+      }
+
+      val client = system.actorOf(Props(new ClientMultiple()))
+      client ! "start"
+
+      system.awaitTermination(10 seconds)
+      assert(database.isDefined)
+      assert(database.get.name === dbName)
+      assert(database.get.raw.result === true)
+      info("New database: " + database.get.name)
+
+      assert(databases.isDefined)
+      info("Databases: " + databases.get.result.mkString(", "))
+      assert(databases.get.result.contains("_system"))
+      assert(databases.get.result.contains(dbName))
       assert(databases.get.code === 200)
       assert(!databases.get.error)
     }

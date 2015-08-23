@@ -1,6 +1,7 @@
 package com.auginte.scarango
 
 import akka.actor.{Actor, ActorSystem, Props}
+import com.auginte.scarango.common.TestKit
 import com.auginte.scarango.errors.ScarangoError
 import com.auginte.scarango.response.Response
 
@@ -10,12 +11,14 @@ import com.auginte.scarango.response.Response
 object Main extends App {
   class Client extends Actor {
 
+    val dbName = TestKit.unique
+    
     // Not keeping alive after all data is received
     private var receivedCount: Int = 0
 
     private def received(): Unit = {
       receivedCount = receivedCount + 1
-      if (receivedCount == 2) {
+      if (receivedCount == 3) {
         context.system.shutdown()
       }
     }
@@ -24,10 +27,15 @@ object Main extends App {
       case "start" =>
         val db = system.actorOf(Props[Scarango])
         db ! get.Version
+        db ! create.Database(dbName)
         db ! get.Databases
 
       case Response(v: response.Version, _) =>
         println("[OK] Got version: " + v.version)
+        received()
+
+      case Response(d: response.Database, _) =>
+        println("[OK] Created: " + d.name)
         received()
 
       case Response(d: response.Databases, _) =>
