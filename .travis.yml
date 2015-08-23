@@ -2,7 +2,7 @@ language: scala
 scala:
   - 2.11.7
 env:
-  - VERSION=2.6.4
+  - VERSION=2.6.5
 before_script:
   - chmod +x ./src/test/travis/arangodb.sh
   - "./src/test/travis/arangodb.sh"
