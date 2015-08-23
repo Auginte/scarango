@@ -19,6 +19,8 @@ cache:
   directories:
     - $HOME/.ivy2/cache
     - $HOME/.sbt/boot/
+    - $HOME/.sbt/launchers/0.13.9/
+    - $TRAVIS_BUILD_DIR/src/test/travis/ArangoDB-2.6.5/
 
 jdk:
   - oraclejdk8
