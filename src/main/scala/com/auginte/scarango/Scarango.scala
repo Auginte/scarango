@@ -3,7 +3,7 @@ package com.auginte.scarango
 import akka.actor.{Actor, ActorRef}
 import akka.io.IO
 import akka.io.Tcp.Close
-import com.auginte.scarango.common.AkkaLogging
+import com.auginte.scarango.common.{AkkaLogging, Request}
 import com.auginte.scarango.errors.{ConnectionError, UnexpectedResponse}
 import com.auginte.scarango.response.{Response, RestApiProcessor}
 import spray.can.Http
@@ -34,10 +34,10 @@ class Scarango extends Actor with AkkaLogging {
   //  Response to user <- Queue <--------------- ArangoDB REST API
   //  User finishes                Connection -> ArangoDB REST API
 
-  private case class Packet(client: ActorRef, request: get.Request)
+  private case class Packet(client: ActorRef, request: Request)
 
   override def receive: Receive = {
-    case r: get.Request =>
+    case r: Request =>
       debug("Saving request", r)
       requestToQueue(sender(), r)
       requestToDatabase()
@@ -65,7 +65,7 @@ class Scarango extends Actor with AkkaLogging {
       error("Unexpected state", other)
   }
 
-  private def requestToQueue(client: ActorRef, request: get.Request): Unit = {
+  private def requestToQueue(client: ActorRef, request: Request): Unit = {
     queue = queue.enqueue(Packet(client, request))
     debug("Saved to queue", request, queue.size)
   }

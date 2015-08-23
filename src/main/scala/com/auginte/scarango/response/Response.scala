@@ -1,6 +1,6 @@
 package com.auginte.scarango.response
 
-import com.auginte.scarango.get.Request
+import com.auginte.scarango.common.Request
 
 /**
  * Wrapping response data and request.

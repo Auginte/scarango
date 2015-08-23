@@ -23,8 +23,8 @@ object Main extends App {
     override def receive: Receive = {
       case "start" =>
         val db = system.actorOf(Props[Scarango])
-        db ! get.Version()
-        db ! get.Databases()
+        db ! get.Version
+        db ! get.Databases
 
       case Response(v: response.Version, _) =>
         println("[OK] Got version: " + v.version)

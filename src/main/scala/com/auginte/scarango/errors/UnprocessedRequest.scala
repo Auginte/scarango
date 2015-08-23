@@ -1,6 +1,6 @@
 package com.auginte.scarango.errors
 
-import com.auginte.scarango.get.Request
+import com.auginte.scarango.common.Request
 
 trait UnprocessedRequest {
   val lastRequest: Request

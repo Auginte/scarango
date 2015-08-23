@@ -21,7 +21,7 @@ class IntegrationTest extends AkkaSpec {
         override def receive: Receive = {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
-            db ! get.Version()
+            db ! get.Version
 
           case Response(v: response.Version, _) =>
             version = Some(v)
@@ -55,8 +55,8 @@ class IntegrationTest extends AkkaSpec {
         override def receive: Receive = {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
-            db ! get.Version()
-            db ! get.Databases()
+            db ! get.Version
+            db ! get.Databases
 
           case Response(v: response.Version, _) =>
             version = Some(v)
