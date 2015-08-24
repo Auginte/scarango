@@ -1,6 +1,5 @@
-package com.auginte.scarango.create
+package com.auginte.scarango.request
 
-import com.auginte.scarango.common
 import com.auginte.scarango.common.Authorisation
 import spray.http._
 import spray.json.JsValue
@@ -8,7 +7,7 @@ import spray.json.JsValue
 /**
  * Request to create new elements in ArangoDB
  */
-abstract class Request(authorisation: Authorisation = Authorisation.default) extends common.Request(authorisation) {
+abstract class CreateRequest(authorisation: Authorisation = Authorisation.default) extends Request(authorisation) {
   protected def toJson: JsValue
 
   final val method: HttpMethod = HttpMethods.POST

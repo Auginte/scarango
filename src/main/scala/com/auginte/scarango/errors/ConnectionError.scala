@@ -1,6 +1,6 @@
 package com.auginte.scarango.errors
 
-import com.auginte.scarango.common.Request
+import com.auginte.scarango.request.Request
 
 /**
  * Not recognised lower level ArangoDB response. For example TCP connection closed

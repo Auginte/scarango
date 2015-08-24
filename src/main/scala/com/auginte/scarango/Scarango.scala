@@ -3,9 +3,10 @@ package com.auginte.scarango
 import akka.actor.{Actor, ActorRef}
 import akka.io.IO
 import akka.io.Tcp.Close
-import com.auginte.scarango.common.{AkkaLogging, Request}
+import com.auginte.scarango.common.AkkaLogging
 import com.auginte.scarango.errors.{ConnectionError, UnexpectedResponse}
-import com.auginte.scarango.response.{Response, RestApiProcessor}
+import com.auginte.scarango.request.Request
+import com.auginte.scarango.response.{ResponseIdentifier, RestApiProcessor}
 import spray.can.Http
 import spray.http.HttpResponse
 
@@ -101,7 +102,7 @@ class Scarango extends Actor with AkkaLogging {
     case Some((Packet(client, request), tail)) =>
       val parsed = RestApiProcessor.process(request, raw)
       debug("Parsed", parsed)
-      client ! Response(parsed, request)
+      client ! ResponseIdentifier(parsed, request)
       queue = tail
     case None =>
       error("No client to receive", raw)

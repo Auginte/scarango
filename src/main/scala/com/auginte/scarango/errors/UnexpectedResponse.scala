@@ -1,6 +1,6 @@
 package com.auginte.scarango.errors
 
-import com.auginte.scarango.common.Request
+import com.auginte.scarango.request.Request
 import spray.http.HttpResponse
 
 /**

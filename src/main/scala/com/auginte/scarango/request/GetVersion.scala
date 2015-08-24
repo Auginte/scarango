@@ -1,10 +1,10 @@
-package com.auginte.scarango.get
+package com.auginte.scarango.request
 
 import spray.http.Uri
 
 /**
  * Request to get version
  */
-case object Version extends Request {
+case object GetVersion extends GetRequest {
   override val uri: Uri = Uri("/_api/version")
 }

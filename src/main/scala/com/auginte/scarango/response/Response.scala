@@ -1,10 +1,8 @@
 package com.auginte.scarango.response
 
-import com.auginte.scarango.common.Request
-
 /**
- * Wrapping response data and request.
+ * Marker for supported JSON decoded ArangoDB responses.
  *
- * So client could better organise requests and responses
+ * This is most generic trait to group all responses
  */
-case class Response(data: ResponseData, request: Request)
+trait Response

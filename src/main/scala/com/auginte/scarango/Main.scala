@@ -3,9 +3,8 @@ package com.auginte.scarango
 import akka.actor.{Actor, ActorSystem, Props}
 import com.auginte.scarango.common.TestKit
 import com.auginte.scarango.errors.ScarangoError
-import com.auginte.scarango.response.created.{Collection, Database}
-import com.auginte.scarango.response.existing.{Databases, Version}
-import com.auginte.scarango.response.{Response, removed}
+import com.auginte.scarango.request._
+import com.auginte.scarango.response._
 
 /**
  * Class for faster testing
@@ -29,35 +28,35 @@ object Main extends App {
     override def receive: Receive = {
       case "start" =>
         val db = system.actorOf(Props[Scarango])
-        db ! get.Version
-        db ! create.Database(dbName)
-        db ! create.Collection(collectionName)
-        db ! remove.Collection(collectionName)
-        db ! get.Databases
-        db ! remove.Database(dbName)
-        db ! get.Databases
+        db ! GetVersion
+        db ! CreateDatabase(dbName)
+        db ! CreateCollection(collectionName)
+        db ! RemoveCollection(collectionName)
+        db ! GetDatabases
+        db ! RemoveDatabase(dbName)
+        db ! GetDatabases
 
-      case Response(v: Version, _) =>
+      case ResponseIdentifier(v: Version, _) =>
         println("[OK] Got version: " + v.version)
         received()
 
-      case Response(d: Database, _) =>
+      case ResponseIdentifier(d: DatabaseCreated, _) =>
         println("[OK] Created: " + d.name)
         received()
 
-      case Response(d: Databases, _) =>
+      case ResponseIdentifier(d: Databases, _) =>
         println("[OK] Got Databases: " + d.result.mkString(", "))
         received()
 
-      case Response(removed.Database(remove.Database(name), _), _) =>
+      case ResponseIdentifier(DatabaseRemoved(RemoveDatabase(name), _), _) =>
         println("[OK] Removed database: " + name)
         received()
 
-      case Response(c: Collection, _) =>
+      case ResponseIdentifier(c: CollectionCreated, _) =>
         println("[OK] Collection created: " + c.name + " with id " + c.id)
         received()
 
-      case Response(removed.Collection(remove.Collection(name), raw), _) =>
+      case ResponseIdentifier(CollectionRemoved(RemoveCollection(name), raw), _) =>
         println("[OK] Collection removed: " + name + " with id " + raw.id)
         received()
 

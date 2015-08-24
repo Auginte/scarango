@@ -1,11 +1,11 @@
-package com.auginte.scarango.get
+package com.auginte.scarango.request
 
 import spray.http.Uri
 
 /**
  * List all databases
  */
-case object Databases extends Request {
+case object GetDatabases extends GetRequest {
   override val uri: Uri = Uri("/_api/database")
 
   override def toString: String = "Get.Databases"

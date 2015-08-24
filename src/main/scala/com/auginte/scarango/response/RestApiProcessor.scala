@@ -1,10 +1,7 @@
 package com.auginte.scarango.response
 
-import com.auginte.scarango.common.Request
-import com.auginte.scarango.response.created.{Collection, Database}
-import com.auginte.scarango.response.existing.{Databases, Version}
+import com.auginte.scarango.request._
 import com.auginte.scarango.response.raw.{BoolResponse, IdResponse}
-import com.auginte.scarango.{create, get, remove}
 import spray.http.HttpResponse
 import spray.json.DefaultJsonProtocol._
 import spray.json.JsonParser
@@ -12,28 +9,28 @@ import spray.json.JsonParser
 /**
  * Converts ArangoDB HTTP response to response objects
  */
-object RestApiProcessor {
-  def process(request: Request, httpResponse: HttpResponse): ResponseData = {
+private[scarango] object RestApiProcessor {
+  def process(request: Request, httpResponse: HttpResponse): Response = {
     val entity = httpResponse.entity.asString
     request match {
-      case get.Version =>
+      case GetVersion =>
         implicit val versionFormat = jsonFormat2(Version)
         JsonParser(entity).convertTo[Version]
-      case get.Databases =>
+      case GetDatabases =>
         implicit val format = jsonFormat3(Databases)
         JsonParser(entity).convertTo[Databases]
-      case d: create.Database =>
+      case d: CreateDatabase =>
         val raw = boolResponse(entity)
-        Database(d.name, raw)
-      case d: remove.Database =>
+        DatabaseCreated(d.name, raw)
+      case d: RemoveDatabase =>
         val raw = boolResponse(entity)
-        removed.Database(d, raw)
-      case _: create.Collection =>
-        implicit val format = jsonFormat8(Collection)
-        JsonParser(entity).convertTo[Collection]
-      case c: remove.Collection =>
+        DatabaseRemoved(d, raw)
+      case _: CreateCollection =>
+        implicit val format = jsonFormat8(CollectionCreated)
+        JsonParser(entity).convertTo[CollectionCreated]
+      case c: RemoveCollection =>
         val raw = idResponse(entity)
-        removed.Collection(c, raw)
+        CollectionRemoved(c, raw)
       case any =>
         RawResponse(httpResponse)
     }

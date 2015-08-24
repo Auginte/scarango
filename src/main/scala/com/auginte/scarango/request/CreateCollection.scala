@@ -1,14 +1,12 @@
-package com.auginte.scarango.create
+package com.auginte.scarango.request
 
 import spray.http.Uri
 import spray.json._
 
-case class Collection(name: String) extends Request {
+case class CreateCollection(name: String) extends CreateRequest {
   override def toJson: JsValue = JsObject(
     "name" -> JsString(name)
   )
 
   override val uri: Uri = Uri("/_api/collection")
-
-  override def toString: String = s"Create.Collection($name)"
 }

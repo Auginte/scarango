@@ -1,14 +1,12 @@
-package com.auginte.scarango.create
+package com.auginte.scarango.request
 
 import spray.http.Uri
 import spray.json._
 
-case class Database(name: String) extends Request {
+case class CreateDatabase(name: String) extends CreateRequest {
   override def toJson: JsValue = JsObject(
     "name" -> JsString(name)
   )
 
   override val uri: Uri = Uri("/_api/database")
-
-  override def toString: String = s"Create.Database($name)"
 }
