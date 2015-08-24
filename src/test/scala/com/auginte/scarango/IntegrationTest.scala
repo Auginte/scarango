@@ -5,7 +5,8 @@ import com.auginte.scarango.common.TestKit
 import com.auginte.scarango.errors.ScarangoError
 import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.response._
-import com.auginte.scarango.response.raw.BoolResponse
+import com.auginte.scarango.response.created.Database
+import com.auginte.scarango.response.existing.{Databases, Version}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -15,6 +16,7 @@ import scala.language.postfixOps
  */
 class IntegrationTest extends AkkaSpec {
   "In environment with real ArangoDB instance, driver" should {
+
     "get version of ArangoDB" in {
       val system = akkaSystem("TestVersions")
       var version: Option[Version] = None
@@ -25,7 +27,7 @@ class IntegrationTest extends AkkaSpec {
             val db = system.actorOf(Props(new Scarango()))
             db ! get.Version
 
-          case Response(v: response.Version, _) =>
+          case Response(v: Version, _) =>
             version = Some(v)
             context.system.shutdown()
 
@@ -48,6 +50,7 @@ class IntegrationTest extends AkkaSpec {
 
       assert(version.get.version === "2.6.5")
     }
+
     "get multiple results: version and database list" in {
       val system = akkaSystem("TestMultiple")
       var version: Option[Version] = None
@@ -60,10 +63,10 @@ class IntegrationTest extends AkkaSpec {
             db ! get.Version
             db ! get.Databases
 
-          case Response(v: response.Version, _) =>
+          case Response(v: Version, _) =>
             version = Some(v)
 
-          case Response(d: response.Databases, _) =>
+          case Response(d: Databases, _) =>
             databases = Some(d)
             system.shutdown() // Testing, if it is second
 
@@ -95,14 +98,13 @@ class IntegrationTest extends AkkaSpec {
     "create and drop new database" in {
       val system = akkaSystem("TestCreateDatabase")
       val dbName = TestKit.unique
-      var database: Option[Database] = None
-      var removed: Option[remove.Database] = None
-      var removedRaw: Option[BoolResponse] = None
+      var databaseCreated: Option[Database] = None
+      var databaseRemoved: Option[removed.Database] = None
       var databases1: Option[Databases] = None
       var databases2: Option[Databases] = None
       var fetchCount = 0
 
-      class ClientMultiple extends Actor {
+      class ClientDatabases extends Actor {
         override def receive: Receive = {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
@@ -111,18 +113,17 @@ class IntegrationTest extends AkkaSpec {
             db ! remove.Database(dbName)
             db ! get.Databases
 
-          case Response(d: response.Database, _) =>
-            database = Some(d)
+          case Response(d: Database, _) =>
+            databaseCreated = Some(d)
 
-          case Response(d: response.Databases, _) if fetchCount == 0 =>
+          case Response(d: Databases, _) if fetchCount == 0 =>
             databases1 = Some(d)
             fetchCount = fetchCount + 1
 
-          case Response(Removed(d: remove.Database, raw), _) =>
-            removed = Some(d)
-            removedRaw = Some(raw)
+          case Response(r: removed.Database, _) =>
+            databaseRemoved = Some(r)
 
-          case Response(d: response.Databases, _) if fetchCount == 1 =>
+          case Response(d: Databases, _) if fetchCount == 1 =>
             databases2 = Some(d)
             fetchCount = fetchCount + 1
             system.shutdown() // Testing, if it is second
@@ -137,14 +138,14 @@ class IntegrationTest extends AkkaSpec {
         }
       }
 
-      val client = system.actorOf(Props(new ClientMultiple()))
+      val client = system.actorOf(Props(new ClientDatabases()))
       client ! "start"
 
       system.awaitTermination(10 seconds)
-      assert(database.isDefined)
-      assert(database.get.name === dbName)
-      assert(database.get.raw.result === true)
-      info("New database: " + database.get.name)
+      assert(databaseCreated.isDefined)
+      assert(databaseCreated.get.name === dbName)
+      assert(databaseCreated.get.raw.result === true)
+      info("New database: " + databaseCreated.get.name)
 
       assert(databases1.isDefined)
       info("Databases: " + databases1.get.result.mkString(", "))
@@ -153,13 +154,12 @@ class IntegrationTest extends AkkaSpec {
       assert(databases1.get.code === 200)
       assert(!databases1.get.error)
 
-      assert(removed.isDefined)
-      assert(removedRaw.isDefined)
-      info("Removed database: " + removed.get.name)
-      assert(removed.get.name === dbName)
-      assert(removedRaw.get.code === 200)
-      assert(removedRaw.get.error === false)
-      assert(removedRaw.get.result === true)
+      assert(databaseRemoved.isDefined)
+      info("Removed database: " + databaseRemoved.get.element.name)
+      assert(databaseRemoved.get.element.name === dbName)
+      assert(databaseRemoved.get.raw.code === 200)
+      assert(databaseRemoved.get.raw.error === false)
+      assert(databaseRemoved.get.raw.result === true)
 
       assert(databases2.isDefined)
       assert(fetchCount === 2)
@@ -170,5 +170,55 @@ class IntegrationTest extends AkkaSpec {
       assert(!databases2.get.error)
     }
 
+    "create and drop collection in _system database" in {
+      val system = akkaSystem("TestCreateCollection")
+      val collectionName = TestKit.unique
+      var collectionCreated: Option[created.Collection] = None
+      var collectionRemoved: Option[removed.Collection] = None
+
+      class ClientCollections extends Actor {
+        override def receive: Receive = {
+          case "start" =>
+            val db = system.actorOf(Props(new Scarango()))
+            db ! create.Collection(collectionName)
+            db ! remove.Collection(collectionName)
+
+          case Response(c: created.Collection, _) =>
+            collectionCreated = Some(c)
+
+          case Response(r: removed.Collection, _) =>
+            collectionRemoved = Some(r)
+            system.shutdown()
+
+          case e: ScarangoError =>
+            fail("[ScarangoError] " + e.getMessage)
+            context.system.shutdown()
+
+          case other =>
+            fail("[UNEXPECTED] " + other)
+            context.system.shutdown()
+        }
+      }
+
+      val client = system.actorOf(Props(new ClientCollections()))
+      client ! "start"
+
+      system.awaitTermination(10 seconds)
+      assert(collectionCreated.isDefined)
+      assert(collectionCreated.get.name === collectionName)
+      assert(collectionCreated.get.id.length > 3)
+      assert(collectionCreated.get.error === false)
+      assert(collectionCreated.get.code === 200)
+      info("New collection: " + collectionCreated.get.name)
+      info("With id: " + collectionCreated.get.id)
+
+      assert(collectionRemoved.isDefined)
+      info("Removed colection: " + collectionRemoved.get.element.name)
+      info("With id: " + collectionRemoved.get.raw.id)
+      assert(collectionRemoved.get.element.name === collectionName)
+      assert(collectionRemoved.get.raw.id === collectionCreated.get.id)
+      assert(collectionRemoved.get.raw.code === 200)
+      assert(collectionRemoved.get.raw.error === false)
+    }
   }
 }

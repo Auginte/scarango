@@ -1,4 +1,4 @@
-package com.auginte.scarango.response
+package com.auginte.scarango.response.created
 
 import com.auginte.scarango.response.raw.BoolResponse
 
