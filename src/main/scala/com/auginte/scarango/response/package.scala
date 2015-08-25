@@ -9,7 +9,7 @@ package com.auginte.scarango
  * From class hierarchy you can see, that everything is organised into:
    - [[com.auginte.scarango.response.Response]]
       - [[com.auginte.scarango.response.Created]]
-      -  [[com.auginte.scarango.response.Data]]
+      - [[com.auginte.scarango.response.Data]]
       - [[com.auginte.scarango.response.Removed]]
  *
  *
@@ -31,6 +31,7 @@ package com.auginte.scarango
  *  }
  * }}}
  *
+ * Also tests could be used as examples: `com.auginte.scarango.IntegrationTest`
  *
  * ==See also==
  *

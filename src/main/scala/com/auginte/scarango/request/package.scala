@@ -9,7 +9,7 @@ package com.auginte.scarango
  * From class hierarchy you can see, that everything is organised into:
    - [[com.auginte.scarango.request.Request]]
       - [[com.auginte.scarango.request.CreateRequest]]
-      -  [[com.auginte.scarango.request.GetRequest]]
+      - [[com.auginte.scarango.request.GetRequest]]
       - [[com.auginte.scarango.request.RemoveRequest]]
  *
  *
@@ -28,6 +28,7 @@ package com.auginte.scarango
  *  db ! GetDatabases
  * }}}
  *
+ * Also tests could be used as examples: `com.auginte.scarango.IntegrationTest`
  *
  * ==See also==
  *
