@@ -15,16 +15,6 @@ object Main extends App {
     val dbName = TestKit.unique
     val collectionName = TestKit.unique
 
-    // Not keeping alive after all data is received
-    private var receivedCount: Int = 0
-
-    private def received(): Unit = {
-      receivedCount = receivedCount + 1
-      if (receivedCount == 7) {
-        context.system.shutdown()
-      }
-    }
-
     override def receive: Receive = {
       case "start" =>
         val db = system.actorOf(Props[Scarango])
@@ -32,33 +22,31 @@ object Main extends App {
         db ! CreateDatabase(dbName)
         db ! CreateCollection(collectionName)
         db ! RemoveCollection(collectionName)
-        db ! GetDatabases
+        db ! request.Identifiable(GetDatabases, id = "with database")
         db ! RemoveDatabase(dbName)
-        db ! GetDatabases
+        db ! request.Identifiable(GetDatabases, id = "database removed")
 
-      case ResponseIdentifier(v: Version, _) =>
+      case v: Version =>
         println("[OK] Got version: " + v.version)
-        received()
 
-      case ResponseIdentifier(d: DatabaseCreated, _) =>
+      case d: DatabaseCreated =>
         println("[OK] Created: " + d.name)
-        received()
 
-      case ResponseIdentifier(d: Databases, _) =>
+      case response.Identifiable(d: Databases, id, _, _, _) if id == "with database" =>
         println("[OK] Got Databases: " + d.result.mkString(", "))
-        received()
 
-      case ResponseIdentifier(DatabaseRemoved(RemoveDatabase(name), _), _) =>
+      case response.Identifiable(d: Databases, id, _, _, _) if id == "database removed" =>
+        println("[OK] Got updated Databases: " + d.result.mkString(", "))
+        context.system.shutdown()
+
+      case DatabaseRemoved(RemoveDatabase(name), _) =>
         println("[OK] Removed database: " + name)
-        received()
 
-      case ResponseIdentifier(c: CollectionCreated, _) =>
+      case c: CollectionCreated =>
         println("[OK] Collection created: " + c.name + " with id " + c.id)
-        received()
 
-      case ResponseIdentifier(CollectionRemoved(RemoveCollection(name), raw), _) =>
+      case CollectionRemoved(RemoveCollection(name), raw) =>
         println("[OK] Collection removed: " + name + " with id " + raw.id)
-        received()
 
       case e: ScarangoError =>
         println("[ERROR] " + e.getMessage)

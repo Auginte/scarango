@@ -12,6 +12,7 @@ package com.auginte.scarango
       - [[com.auginte.scarango.request.GetRequest]]
       - [[com.auginte.scarango.request.RemoveRequest]]
  *
+ * There is special use case for [[com.auginte.scarango.request.Identifiable]]
  *
  * ==Example of usage==
  *
@@ -23,9 +24,9 @@ package com.auginte.scarango
  *  db ! CreateDatabase(dbName)
  *  db ! CreateCollection(collectionName)
  *  db ! RemoveCollection(collectionName)
- *  db ! GetDatabases
+ *  db ! request.Identifiable(GetDatabases, id = "with database")
  *  db ! RemoveDatabase(dbName)
- *  db ! GetDatabases
+ *  db ! request.Identifiable(GetDatabases, id = "with database removed")
  * }}}
  *
  * Also tests could be used as examples: `com.auginte.scarango.IntegrationTest`

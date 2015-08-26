@@ -2,6 +2,7 @@ package com.auginte.scarango.response
 
 import com.auginte.scarango.request._
 import com.auginte.scarango.response.raw.{BoolResponse, IdResponse}
+import com.auginte.scarango.{request => r, response}
 import spray.http.HttpResponse
 import spray.json.DefaultJsonProtocol._
 import spray.json.JsonParser
@@ -13,6 +14,9 @@ private[scarango] object RestApiProcessor {
   def process(request: Request, httpResponse: HttpResponse): Response = {
     val entity = httpResponse.entity.asString
     request match {
+      case r.Identifiable(r, id, authentication, database) =>
+        val inner = process(r, httpResponse)
+        response.Identifiable(inner, id, request, authentication, database)
       case GetVersion =>
         implicit val versionFormat = jsonFormat2(Version)
         JsonParser(entity).convertTo[Version]

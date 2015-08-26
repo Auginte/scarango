@@ -26,7 +26,7 @@ class IntegrationTest extends AkkaSpec {
             val db = system.actorOf(Props(new Scarango()))
             db ! GetVersion
 
-          case ResponseIdentifier(v: Version, _) =>
+          case v: Version =>
             version = Some(v)
             context.system.shutdown()
 
@@ -62,10 +62,10 @@ class IntegrationTest extends AkkaSpec {
             db ! GetVersion
             db ! GetDatabases
 
-          case ResponseIdentifier(v: Version, _) =>
+          case v: Version =>
             version = Some(v)
 
-          case ResponseIdentifier(d: Databases, _) =>
+          case d: Databases =>
             databases = Some(d)
             system.shutdown() // Testing, if it is second
 
@@ -101,31 +101,28 @@ class IntegrationTest extends AkkaSpec {
       var removed: Option[DatabaseRemoved] = None
       var databases1: Option[Databases] = None
       var databases2: Option[Databases] = None
-      var fetchCount = 0
 
       class ClientDatabases extends Actor {
         override def receive: Receive = {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
             db ! CreateDatabase(dbName)
-            db ! GetDatabases
+            db ! request.Identifiable(GetDatabases, id = "created?")
             db ! RemoveDatabase(dbName)
-            db ! GetDatabases
+            db ! request.Identifiable(GetDatabases, id = "removed?")
 
-          case ResponseIdentifier(d: DatabaseCreated, _) =>
+          case d: DatabaseCreated =>
             created = Some(d)
 
-          case ResponseIdentifier(d: Databases, _) if fetchCount == 0 =>
+          case response.Identifiable(d: Databases, id, _, _, _) if id == "created?" =>
             databases1 = Some(d)
-            fetchCount = fetchCount + 1
 
-          case ResponseIdentifier(r: DatabaseRemoved, _) =>
+          case r: DatabaseRemoved =>
             removed = Some(r)
 
-          case ResponseIdentifier(d: Databases, _) if fetchCount == 1 =>
+          case response.Identifiable(d: Databases, id, _, _, _) if id == "removed?" =>
             databases2 = Some(d)
-            fetchCount = fetchCount + 1
-            system.shutdown() // Testing, if it is second
+            system.shutdown()
 
           case e: ScarangoError =>
             fail("[ScarangoError] " + e.getMessage)
@@ -161,7 +158,6 @@ class IntegrationTest extends AkkaSpec {
       assert(removed.get.raw.result === true)
 
       assert(databases2.isDefined)
-      assert(fetchCount === 2)
       info("Databases: " + databases2.get.result.mkString(", "))
       assert(databases2.get.result.contains("_system"))
       assert(!databases2.get.result.contains(dbName))
@@ -182,10 +178,10 @@ class IntegrationTest extends AkkaSpec {
             db ! CreateCollection(collectionName)
             db ! RemoveCollection(collectionName)
 
-          case ResponseIdentifier(c: CollectionCreated, _) =>
+          case c: CollectionCreated =>
             created = Some(c)
 
-          case ResponseIdentifier(r: CollectionRemoved, _) =>
+          case r: CollectionRemoved =>
             removed = Some(r)
             system.shutdown()
 

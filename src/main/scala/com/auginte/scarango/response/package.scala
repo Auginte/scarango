@@ -12,6 +12,7 @@ package com.auginte.scarango
       - [[com.auginte.scarango.response.Data]]
       - [[com.auginte.scarango.response.Removed]]
  *
+ * There is special use case for [[com.auginte.scarango.response.Identifiable]]
  *
  * ==Example of usage==
  *
@@ -21,10 +22,10 @@ package com.auginte.scarango
  *  class Client extends Actor {
  *    override def receive: Receive = {
  *
- *      case ResponseIdentifier(v: Version, _) =>
+ *      case v: Version =>
  *        println("Got version: " + v.version)
  *
- *      case ResponseIdentifier(d: DatabaseCreated, _) =>
+ *      case response.Identifiable(d: Databases, id, _, _, _) if id == "database removed" =>
  *        println("Created: " + d.name)
  *
  *    }
