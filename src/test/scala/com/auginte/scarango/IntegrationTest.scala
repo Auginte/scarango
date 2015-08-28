@@ -47,7 +47,7 @@ class IntegrationTest extends AkkaSpec {
       assert(version.isDefined)
       info("Version: " + version.get.version)
 
-      assert(version.get.version === "2.6.5")
+      assert(version.get.version === latestApiVersion)
     }
 
     "get multiple results: version and database list" in {
@@ -85,7 +85,7 @@ class IntegrationTest extends AkkaSpec {
       system.awaitTermination(10 seconds)
       assert(version.isDefined)
       info("Version: " + version.get.version)
-      assert(version.get.version === "2.6.5")
+      assert(version.get.version === latestApiVersion)
 
       assert(databases.isDefined)
       info("Databases: " + databases.get.result.mkString(", "))
