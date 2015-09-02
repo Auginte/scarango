@@ -16,8 +16,11 @@ object build extends sbt.Build {
     "io.spray" %% "spray-client" % sprayVersion,
     "io.spray" %%  "spray-json" % "1.3.2",
     "io.spray" %% "spray-json" % "1.3.2",
+    "org.scala-lang" % "scala-compiler" % buildScalaVersion,
     "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
   )
+
+  lazy val scarangoMacros = RootProject(file("scarango-macros"))
 
   lazy val scarangoLibrary = Project(id = buildName, base = file(".")) settings
     (
@@ -29,5 +32,5 @@ object build extends sbt.Build {
       libraryDependencies ++= buildDependencies,
       scalacOptions in(Compile, doc) ++= Seq("-diagrams"),
       spray.revolver.RevolverPlugin.Revolver.settings
-    )
+    ) dependsOn(scarangoMacros)
 }
