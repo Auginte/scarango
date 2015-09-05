@@ -32,6 +32,9 @@ private[scarango] object RestApiProcessor {
       case _: CreateCollection =>
         implicit val format = jsonFormat8(CollectionCreated)
         JsonParser(entity).convertTo[CollectionCreated]
+      case c: GetCollection =>
+        implicit val format = jsonFormat7(Collection)
+        JsonParser(entity).convertTo[Collection]
       case c: RemoveCollection =>
         val raw = idResponse(entity)
         CollectionRemoved(c, raw)

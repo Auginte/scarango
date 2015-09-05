@@ -6,6 +6,7 @@ import com.auginte.scarango.errors.ScarangoError
 import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.request._
 import com.auginte.scarango.response._
+import com.auginte.scarango.response.meta.collection.{Statuses, Types}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -169,6 +170,7 @@ class IntegrationTest extends AkkaSpec {
       val system = akkaSystem("TestCreateCollection")
       val collectionName = TestKit.unique
       var created: Option[CollectionCreated] = None
+      var collection: Option[Collection] = None
       var removed: Option[CollectionRemoved] = None
 
       class ClientCollections extends Actor {
@@ -176,10 +178,14 @@ class IntegrationTest extends AkkaSpec {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
             db ! CreateCollection(collectionName)
+            db ! GetCollection(collectionName)
             db ! RemoveCollection(collectionName)
 
           case c: CollectionCreated =>
             created = Some(c)
+
+          case c: Collection =>
+            collection = Some(c)
 
           case r: CollectionRemoved =>
             removed = Some(r)
@@ -207,8 +213,14 @@ class IntegrationTest extends AkkaSpec {
       info("New collection: " + created.get.name)
       info("With id: " + created.get.id)
 
+      assert(collection.isDefined)
+      assert(collection.get.name == collectionName)
+      assert(collection.get.id.length > 10)
+      assert(collection.get.enumStatus === Statuses.Loaded)
+      assert(collection.get.enumType === Types.Document)
+
       assert(removed.isDefined)
-      info("Removed colection: " + removed.get.element.name)
+      info("Removed collection: " + removed.get.element.name)
       info("With id: " + removed.get.raw.id)
       assert(removed.get.element.name === collectionName)
       assert(removed.get.raw.id === created.get.id)

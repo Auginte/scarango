@@ -21,6 +21,7 @@ object Main extends App {
         db ! GetVersion
         db ! CreateDatabase(dbName)
         db ! CreateCollection(collectionName)
+        db ! GetCollection(collectionName)
         db ! RemoveCollection(collectionName)
         db ! request.Identifiable(GetDatabases, id = "with database")
         db ! RemoveDatabase(dbName)
@@ -44,6 +45,9 @@ object Main extends App {
 
       case c: CollectionCreated =>
         println("[OK] Collection created: " + c.name + " with id " + c.id)
+
+      case c: Collection =>
+        println(s"[OK] Collection: {ID: ${c.id} NAME: ${c.name} STATUS: ${c.enumStatus} TYPE: ${c.enumType}}")
 
       case CollectionRemoved(RemoveCollection(name), raw) =>
         println("[OK] Collection removed: " + name + " with id " + raw.id)
