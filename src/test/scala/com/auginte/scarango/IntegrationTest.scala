@@ -215,7 +215,7 @@ class IntegrationTest extends AkkaSpec {
 
       assert(collection.isDefined)
       assert(collection.get.name == collectionName)
-      assert(collection.get.id.length > 10)
+      assert(collection.get.id.length > 5)
       assert(collection.get.enumStatus === Statuses.Loaded)
       assert(collection.get.enumType === Types.Document)
 
