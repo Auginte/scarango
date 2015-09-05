@@ -5,8 +5,8 @@ import spray.http.Uri
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 
-case class CreateDatabase(name: String) extends CreateRequest {
-  override def toJson = SelfJson.materialise[this.type ]
+case class CreateDatabase(name: String) extends CreateRequest with groups.Database{
+  override def toJson = SelfJson.materialise[this.type]
 
   override val uri: Uri = Uri("/_api/database")
 }

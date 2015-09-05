@@ -14,6 +14,7 @@ object Main extends App {
 
     val dbName = TestKit.unique
     val collectionName = TestKit.unique
+    val documentData = """{"some":"data"}"""
 
     override def receive: Receive = {
       case "start" =>
@@ -22,6 +23,7 @@ object Main extends App {
         db ! CreateDatabase(dbName)
         db ! CreateCollection(collectionName)
         db ! GetCollection(collectionName)
+        db ! CreateDocument(collectionName, documentData)
         db ! RemoveCollection(collectionName)
         db ! request.Identifiable(GetDatabases, id = "with database")
         db ! RemoveDatabase(dbName)
@@ -48,6 +50,9 @@ object Main extends App {
 
       case c: Collection =>
         println(s"[OK] Collection: {ID: ${c.id} NAME: ${c.name} STATUS: ${c.enumStatus} TYPE: ${c.enumType}}")
+
+      case c: DocumentCreated =>
+        println("[OK] Document created: " + c.id)
 
       case CollectionRemoved(RemoveCollection(name), raw) =>
         println("[OK] Collection removed: " + name + " with id " + raw.id)

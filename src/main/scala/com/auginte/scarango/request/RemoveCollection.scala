@@ -2,6 +2,6 @@ package com.auginte.scarango.request
 
 import spray.http.Uri
 
-case class RemoveCollection(name: String) extends RemoveRequest {
+case class RemoveCollection(name: String) extends RemoveRequest with groups.Collection {
   override lazy val uri: Uri = Uri(s"/_api/collection/$name")
 }

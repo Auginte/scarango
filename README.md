@@ -4,7 +4,7 @@ Just another Scala driver for ArangoDB
 [![Build Status](https://secure.travis-ci.org/aurelijusb/scarango.png?branch=master)](http://travis-ci.org/aurelijusb/scarango)
 
 Actor based Scala driver/client for ArangoDB.
-This driver is based on ArangoDB REST API, spray.io.
+This driver is based on ArangoDB REST API and spray.io.
 
 Stability
 ---------
@@ -21,6 +21,13 @@ This client/driver concentrates on faster/easier development of
 * Graph intensive applications
 
 Meaning, not the coverage of newest API changes or fancy ORM.
+
+Architecture concepts
+---------------------
+
+* Interacting with ArangoDB via Scarango Actor
+* All operations/actor messages grouped into requests and response packages
+* For function related grouping, `request.groups` traits are used as a markers
 
 Similar projects
 ----------------

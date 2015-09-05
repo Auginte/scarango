@@ -228,4 +228,54 @@ class IntegrationTest extends AkkaSpec {
       assert(removed.get.raw.error === false)
     }
   }
+
+  "create document in custom collection" in {
+    val system = akkaSystem("TestCreateDocument")
+    val collectionName = TestKit.unique
+    var collectionCraeted: Option[CollectionCreated] = None
+    var collectionRemoved: Option[CollectionRemoved] = None
+    var created: Option[DocumentCreated] = None
+    val documentData = """{"some": "data"}"""
+
+    class ClientCollections extends Actor {
+      override def receive: Receive = {
+        case "start" =>
+          val db = system.actorOf(Props(new Scarango()))
+          db ! CreateCollection(collectionName)
+          db ! CreateDocument(collectionName, documentData)
+          db ! RemoveCollection(collectionName)
+
+        case c: CollectionCreated =>
+          collectionCraeted = Some(c)
+
+        case c: DocumentCreated =>
+          created = Some(c)
+
+        case r: CollectionRemoved =>
+          collectionRemoved = Some(r)
+          system.shutdown()
+
+        case e: ScarangoError =>
+          fail("[ScarangoError] " + e.getMessage)
+          context.system.shutdown()
+
+        case other =>
+          fail("[UNEXPECTED] " + other)
+          context.system.shutdown()
+      }
+    }
+
+    val client = system.actorOf(Props(new ClientCollections()))
+    client ! "start"
+
+    system.awaitTermination(10 seconds)
+    assert(collectionCraeted.isDefined)
+    assert(collectionRemoved.isDefined)
+
+    assert(created.isDefined)
+    info("Document created with id: " + created.get.id)
+    assert(created.get.id.startsWith(collectionName + "/"))
+    assert(created.get.collection === collectionName)
+    assert(created.get.raw.error === false)
+  }
 }

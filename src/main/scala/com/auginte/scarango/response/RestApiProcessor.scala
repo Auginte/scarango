@@ -38,6 +38,9 @@ private[scarango] object RestApiProcessor {
       case c: RemoveCollection =>
         val raw = idResponse(entity)
         CollectionRemoved(c, raw)
+      case c: CreateDocument =>
+        val raw = documentCreated(entity)
+        DocumentCreated(raw._id, c.collection, raw)
       case any =>
         RawResponse(httpResponse)
     }
@@ -51,5 +54,10 @@ private[scarango] object RestApiProcessor {
   private def idResponse(entity: String): IdResponse = {
     implicit val format = jsonFormat3(IdResponse)
     JsonParser(entity).convertTo[IdResponse]
+  }
+
+  private def documentCreated(entity: String): raw.RawDocumentCreated = {
+    implicit val format = jsonFormat4(raw.RawDocumentCreated)
+    JsonParser(entity).convertTo[raw.RawDocumentCreated]
   }
 }
