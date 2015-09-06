@@ -11,14 +11,14 @@ Stability
 
 **This is early alpha**
 
-* Database: Create, List, Remove, ~~by user~~, ~~with user data~~ 
-* Collection: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~, ~~rename~~
-* Document: Create, List, Read, ~~Update~~, Remove, ~~Test~~
+* **Database**: Create, List, Remove, ~~by user~~, ~~with user data~~ 
+* **Collection**: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
+* **Document**: Create, List, Read, ~~Update~~, Remove, ~~Test~~
 * ~~Query, Cursor, Explain~~
 * ~~Graph, edge, edges~~~
 * ~~Batch, Index~~
 * ~~Export, replicate~~
-* ~~WAL, System, Tasks, Log~~
+* Version, ~~WAL, System, Tasks, Log~~
 
 See [integration tests](src/test/scala/com/auginte/scarango/IntegrationTest.scala)
 for details of covered functionality and usage examples  
@@ -36,9 +36,9 @@ Meaning, not the coverage of newest API changes or fancy ORM.
 Architecture concepts
 ---------------------
 
-* Interacting with ArangoDB via Scarango Actor
-* All operations/actor messages grouped into requests and response packages
-* For function related grouping, `request.groups` traits are used as a markers
+* Interacting with ArangoDB via Scarango Actor (reuse open HTTP connection)
+* All operations/actor messages grouped into requests, response and error packages
+* `request.groups` traits used for Functional grouping
 
 Similar projects
 ----------------
