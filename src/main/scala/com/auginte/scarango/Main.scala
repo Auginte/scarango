@@ -2,7 +2,7 @@ package com.auginte.scarango
 
 import akka.actor.{Actor, ActorSystem, Props}
 import com.auginte.scarango.common.TestKit
-import com.auginte.scarango.errors.ScarangoError
+import com.auginte.scarango.errors.{UnexpectedResponse, ScarangoError}
 import com.auginte.scarango.request._
 import com.auginte.scarango.response._
 
@@ -15,54 +15,84 @@ object Main extends App {
     val dbName = TestKit.unique
     val collectionName = TestKit.unique
     val documentData = """{"some":"data"}"""
+    var newDocumentId: String = ""
+
+    def ok(text: String) = println(Console.GREEN_B + "[OK]" + Console.RESET + " " + Console.BLUE + text + Console.RESET)
+
+    def error(text: String) = println(Console.RED_B + "[ERROR]" + Console.RESET + " " + Console.RED + text + Console.RESET)
+
+    def lastRequest(text: String) = println(Console.RED_B + "[LAST REQUEST]" + Console.RESET + " " + Console.RED + text + Console.RESET)
+
+    def unexpected(text: String) = println(Console.RED_B + "[UNEXPECTED]" + Console.RESET + " " + Console.RED + text + Console.RESET)
+
+    val db = system.actorOf(Props[Scarango])
 
     override def receive: Receive = {
       case "start" =>
-        val db = system.actorOf(Props[Scarango])
         db ! GetVersion
         db ! CreateDatabase(dbName)
-        db ! CreateCollection(collectionName)
-        db ! GetCollection(collectionName)
-        db ! CreateDocument(collectionName, documentData)
-        db ! RemoveCollection(collectionName)
+        db ! CreateCollection(collectionName, dbName)
+        db ! GetCollection(collectionName, dbName)
+        db ! CreateDocument(documentData, collectionName, dbName)
+        db ! GetDocuments(collectionName, dbName)
+
+      case "removeDocument" =>
+        db ! RemoveDocument(newDocumentId, dbName)
+
+      case "cleanup" =>
+        db ! RemoveCollection(collectionName, dbName)
         db ! request.Identifiable(GetDatabases, id = "with database")
         db ! RemoveDatabase(dbName)
         db ! request.Identifiable(GetDatabases, id = "database removed")
 
       case v: Version =>
-        println("[OK] Got version: " + v.version)
+        ok("Got version: " + v.version)
 
       case d: DatabaseCreated =>
-        println("[OK] Created: " + d.name)
+        ok("Created: " + d.name)
 
       case response.Identifiable(d: Databases, id, _, _, _) if id == "with database" =>
-        println("[OK] Got Databases: " + d.result.mkString(", "))
+        ok("Got Databases: " + d.result.mkString(", "))
 
       case response.Identifiable(d: Databases, id, _, _, _) if id == "database removed" =>
-        println("[OK] Got updated Databases: " + d.result.mkString(", "))
+        ok("Got updated Databases: " + d.result.mkString(", "))
         context.system.shutdown()
 
       case DatabaseRemoved(RemoveDatabase(name), _) =>
-        println("[OK] Removed database: " + name)
+        ok("Removed database: " + name)
 
       case c: CollectionCreated =>
-        println("[OK] Collection created: " + c.name + " with id " + c.id)
+        ok("Collection created: " + c.name + " with id " + c.id)
 
       case c: Collection =>
-        println(s"[OK] Collection: {ID: ${c.id} NAME: ${c.name} STATUS: ${c.enumStatus} TYPE: ${c.enumType}}")
+        ok(s"Collection: {ID: ${c.id} NAME: ${c.name} STATUS: ${c.enumStatus} TYPE: ${c.enumType}}")
 
       case c: DocumentCreated =>
-        println("[OK] Document created: " + c.id)
+        ok("Document created: " + c.id)
+        newDocumentId = c.id
 
-      case CollectionRemoved(RemoveCollection(name), raw) =>
-        println("[OK] Collection removed: " + name + " with id " + raw.id)
+      case c: Documents =>
+        ok("Documents: " + c.ids.mkString(", "))
+        self ! "removeDocument"
+        self ! "cleanup"
+
+      case c: DocumentRemoved =>
+        ok("Document removed: " + c.id + " in " + c.database)
+
+      case CollectionRemoved(RemoveCollection(name, _), raw) =>
+        ok("Collection removed: " + name + " with id " + raw.id)
+
+      case e: UnexpectedResponse =>
+        error(e.getMessage)
+        lastRequest(e.lastRequest.toString)
+        context.system.shutdown()
 
       case e: ScarangoError =>
-        println("[ERROR] " + e.getMessage)
+        error(e.getMessage)
         context.system.shutdown()
 
       case other =>
-        println("[UNEXPECTED] " + other)
+        unexpected(other.toString)
         context.system.shutdown()
     }
   }

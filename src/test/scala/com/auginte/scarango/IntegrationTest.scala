@@ -2,7 +2,7 @@ package com.auginte.scarango
 
 import akka.actor._
 import com.auginte.scarango.common.TestKit
-import com.auginte.scarango.errors.ScarangoError
+import com.auginte.scarango.errors.{UnexpectedRequest, ScarangoError}
 import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.request._
 import com.auginte.scarango.response._
@@ -227,55 +227,128 @@ class IntegrationTest extends AkkaSpec {
       assert(removed.get.raw.code === 200)
       assert(removed.get.raw.error === false)
     }
+
+    "create and remove document asynchronously" in {
+      info("Testing removal of document, while database still processing read operation")
+
+      val system = akkaSystem("TestCreateDocument")
+      val collectionName = TestKit.unique
+      var collectionCreated: Option[CollectionCreated] = None
+      var collectionRemoved: Option[CollectionRemoved] = None
+      var created: Option[DocumentCreated] = None
+      var removed: Option[DocumentRemoved] = None
+      var version: Option[Version] = None
+      var documents: Option[Documents] = None
+      val documentData = """{"some": "data"}"""
+
+      val db = system.actorOf(Props(new Scarango()))
+      class ClientCollections extends Actor {
+        override def receive: Receive = {
+          case "start" =>
+            db ! CreateCollection(collectionName)
+            db ! CreateDocument(documentData, collectionName)
+            db ! GetDocuments(collectionName)
+            db ! GetVersion
+
+          case "removeDocument" =>
+            db ! RemoveDocument(created.get.id)
+            self ! "cleanup"
+
+          case "cleanup" =>
+            db ! RemoveCollection(collectionName)
+
+          case c: CollectionCreated =>
+            collectionCreated = Some(c)
+
+          case c: DocumentCreated =>
+            created = Some(c)
+
+          case r: DocumentRemoved =>
+            removed = Some(r)
+
+          case v: Version =>
+            version = Some(v)
+
+          case d: Documents =>
+            documents = Some(d)
+            info("Documents: " + d.ids.mkString(", "))
+            self ! "removeDocument"
+
+          case r: CollectionRemoved =>
+            collectionRemoved = Some(r)
+            system.shutdown()
+
+          case e: ScarangoError =>
+            fail("[ScarangoError] " + e.getMessage)
+            context.system.shutdown()
+
+          case other =>
+            fail("[UNEXPECTED] " + other)
+            context.system.shutdown()
+        }
+      }
+
+      val client = system.actorOf(Props(new ClientCollections()))
+      client ! "start"
+
+      system.awaitTermination(5 seconds)
+      assert(collectionCreated.isDefined)
+      assert(collectionRemoved.isDefined)
+
+      assert(created.isDefined)
+      info("Document created with id: " + created.get.id)
+      assert(created.get.id.startsWith(collectionName + "/"))
+      assert(created.get.collection === collectionName)
+      assert(created.get.raw.error === false)
+
+      assert(documents.isDefined)
+      assert(documents.get.ids.length === 1)
+      assert(documents.get.ids.head === created.get.id)
+
+      assert(removed.isDefined)
+      assert(removed.get.id === created.get.id)
+
+      assert(version.isDefined)
+      assert(collectionRemoved.isDefined)
+    }
   }
 
-  "create document in custom collection" in {
-    val system = akkaSystem("TestCreateDocument")
-    val collectionName = TestKit.unique
-    var collectionCraeted: Option[CollectionCreated] = None
-    var collectionRemoved: Option[CollectionRemoved] = None
-    var created: Option[DocumentCreated] = None
-    val documentData = """{"some": "data"}"""
+  "Wen using driver in unexpected way" should {
+    "return error about bad request to client" in {
+      val system = akkaSystem("TestErrorHandling")
+      var exception: Option[UnexpectedRequest] = None
 
-    class ClientCollections extends Actor {
-      override def receive: Receive = {
-        case "start" =>
-          val db = system.actorOf(Props(new Scarango()))
-          db ! CreateCollection(collectionName)
-          db ! CreateDocument(collectionName, documentData)
-          db ! RemoveCollection(collectionName)
+      class ErrorHandling extends Actor {
+        override def receive: Receive = {
+          case "start" =>
+            val db = system.actorOf(Props(new Scarango()))
+            db ! GetVersion
+            db ! GetDocuments // Common mistype: db ! GetDocuments("collection")
 
-        case c: CollectionCreated =>
-          collectionCraeted = Some(c)
+          case e: UnexpectedRequest =>
+            info("Error description: " + e.getMessage)
+            exception = Some(e)
 
-        case c: DocumentCreated =>
-          created = Some(c)
+          case v: Version =>
+            info("Version: " + v.version)
+            context.system.shutdown()
 
-        case r: CollectionRemoved =>
-          collectionRemoved = Some(r)
-          system.shutdown()
+          case e: ScarangoError =>
+            fail("[ScarangoError] " + e.getMessage)
+            context.system.shutdown()
 
-        case e: ScarangoError =>
-          fail("[ScarangoError] " + e.getMessage)
-          context.system.shutdown()
-
-        case other =>
-          fail("[UNEXPECTED] " + other)
-          context.system.shutdown()
+          case other =>
+            fail("[UNEXPECTED] " + other)
+            context.system.shutdown()
+        }
       }
+
+      val client = system.actorOf(Props(new ErrorHandling()))
+      client ! "start"
+
+      system.awaitTermination(5 seconds)
+      assert(exception.isDefined)
+      assert(exception.get.getMessage === "Unexpected Request to driver: GetDocuments")
     }
-
-    val client = system.actorOf(Props(new ClientCollections()))
-    client ! "start"
-
-    system.awaitTermination(10 seconds)
-    assert(collectionCraeted.isDefined)
-    assert(collectionRemoved.isDefined)
-
-    assert(created.isDefined)
-    info("Document created with id: " + created.get.id)
-    assert(created.get.id.startsWith(collectionName + "/"))
-    assert(created.get.collection === collectionName)
-    assert(created.get.raw.error === false)
   }
 }
