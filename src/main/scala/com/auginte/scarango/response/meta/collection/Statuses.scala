@@ -1,5 +1,7 @@
 package com.auginte.scarango.response.meta.collection
 
+sealed class Status(val id: Int, val name: String) extends WithId
+
 /**
  * Human readable collection statuses
  */
@@ -21,5 +23,3 @@ object Statuses extends Enum[Status] {
 
   val valid = Seq(New, Unloaded, Loaded, BeingUnloaded, Deleted, Loaded)
 }
-
-sealed class Status(val id: Int, val name: String)

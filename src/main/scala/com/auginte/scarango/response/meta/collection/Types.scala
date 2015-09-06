@@ -1,5 +1,7 @@
 package com.auginte.scarango.response.meta.collection
 
+sealed class Type(val id: Int, val name: String) extends WithId
+
 /**
  * Human readable collection statuses
  */
@@ -13,5 +15,3 @@ object Types extends Enum[Type] {
 
   override val valid: Seq[Type] = Seq(Document, Edge)
 }
-
-sealed class Type(val id: Int, val name: String)

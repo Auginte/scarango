@@ -8,5 +8,7 @@ trait Enum[A <: WithId] {
 
   def unknown(id: Int): A
 
-  def byValue(id: Int): A = valid find (_.id == id) getOrElse unknown(id)
+  def byValue(id: Int): A = valid find {
+    _.id == id
+  } getOrElse unknown(id)
 }

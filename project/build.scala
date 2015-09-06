@@ -5,7 +5,7 @@ object build extends sbt.Build {
   val buildName = "scarango"
   val buildVersion = "0.1"
   val buildScalaVersion = "2.11.7"
-  val buildOptions = Seq("-unchecked", "-deprecation", "-encoding", "utf8")
+  val buildOptions = Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
 
   val akkaVersion = "2.3.12"
   val sprayVersion = "1.3.3"
@@ -32,5 +32,5 @@ object build extends sbt.Build {
       libraryDependencies ++= buildDependencies,
       scalacOptions in(Compile, doc) ++= Seq("-diagrams"),
       spray.revolver.RevolverPlugin.Revolver.settings
-    ) dependsOn(scarangoMacros)
+      ) dependsOn scarangoMacros
 }
