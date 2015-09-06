@@ -34,16 +34,15 @@ object Main extends App {
         db ! CreateCollection(collectionName, dbName)
         db ! GetCollection(collectionName, dbName)
         db ! CreateDocument(documentData, collectionName, dbName)
-        db ! GetDocuments(collectionName, dbName)
 
       case "removeDocument" =>
         db ! RemoveDocument(newDocumentId, dbName)
 
       case "cleanup" =>
         db ! RemoveCollection(collectionName, dbName)
-        db ! request.Identifiable(GetDatabases, id = "with database")
+        db ! request.Identifiable(ListDatabases, id = "with database")
         db ! RemoveDatabase(dbName)
-        db ! request.Identifiable(GetDatabases, id = "database removed")
+        db ! request.Identifiable(ListDatabases, id = "database removed")
 
       case v: Version =>
         ok("Got version: " + v.version)
@@ -51,10 +50,10 @@ object Main extends App {
       case d: DatabaseCreated =>
         ok("Created: " + d.name)
 
-      case response.Identifiable(d: Databases, id, _, _, _) if id == "with database" =>
+      case response.Identifiable(d: DatabaseList, id, _, _, _) if id == "with database" =>
         ok("Got Databases: " + d.result.mkString(", "))
 
-      case response.Identifiable(d: Databases, id, _, _, _) if id == "database removed" =>
+      case response.Identifiable(d: DatabaseList, id, _, _, _) if id == "database removed" =>
         ok("Got updated Databases: " + d.result.mkString(", "))
         context.system.shutdown()
 
@@ -70,8 +69,13 @@ object Main extends App {
       case c: DocumentCreated =>
         ok("Document created: " + c.id)
         newDocumentId = c.id
+        db ! GetDocument(c.id, dbName)
+        db ! ListDocuments(collectionName, dbName)
 
-      case c: Documents =>
+      case d: Document =>
+        ok(s"Document ID: ${d.id} DATA: ${d.json}")
+
+      case c: DocumentList =>
         ok("Documents: " + c.ids.mkString(", "))
         self ! "removeDocument"
         self ! "cleanup"

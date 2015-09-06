@@ -4,20 +4,31 @@ Just another Scala driver for ArangoDB
 [![Build Status](https://secure.travis-ci.org/aurelijusb/scarango.png?branch=master)](http://travis-ci.org/aurelijusb/scarango)
 
 Actor based Scala driver/client for ArangoDB.
-This driver is based on ArangoDB REST API and spray.io.
+This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and spray.io.
 
 Stability
 ---------
 
-**This is early alpha.
-Do not expect much**
+**This is early alpha**
+
+* Database: Create, List, Remove, ~~by user~~, ~~with user data~~ 
+* Collection: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~, ~~rename~~
+* Document: Create, List, Read, ~~Update~~, Remove, ~~Test~~
+* ~~Query, Cursor, Explain~~
+* ~~Graph, edge, edges~~~
+* ~~Batch, Index~~
+* ~~Export, replicate~~
+* ~~WAL, System, Tasks, Log~~
+
+See [integration tests](src/test/scala/com/auginte/scarango/IntegrationTest.scala)
+for details of covered functionality and usage examples  
 
 Why another driver
 ------------------
 
 This client/driver concentrates on faster/easier development of
 
-* Akka based applications
+* Akka/spray based applications
 * Graph intensive applications
 
 Meaning, not the coverage of newest API changes or fancy ORM.
@@ -34,11 +45,6 @@ Similar projects
 
 * https://github.com/CharlesAHunt/proteus
 * https://github.com/sumito3478/scarango
-
-Related
--------
-
-* https://github.com/arangodb/arangodb/
 
 Run
 ---

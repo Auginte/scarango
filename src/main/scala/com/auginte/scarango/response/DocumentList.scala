@@ -2,7 +2,7 @@ package com.auginte.scarango.response
 
 import com.auginte.scarango.response.raw.RawDocuments
 
-case class Documents(raw: RawDocuments) extends Data {
+case class DocumentList(raw: RawDocuments) extends Data {
   @inline def paths: Array[String] = raw.documents
 
   def ids: Array[String] = paths map documentId

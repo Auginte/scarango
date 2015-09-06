@@ -20,9 +20,9 @@ private[scarango] object RestApiProcessor {
       case GetVersion =>
         implicit val versionFormat = jsonFormat2(Version)
         JsonParser(entity).convertTo[Version]
-      case GetDatabases =>
-        implicit val format = jsonFormat3(Databases)
-        JsonParser(entity).convertTo[Databases]
+      case ListDatabases =>
+        implicit val format = jsonFormat3(DatabaseList)
+        JsonParser(entity).convertTo[DatabaseList]
       case d: CreateDatabase =>
         val raw = boolResponse(entity)
         DatabaseCreated(d.name, raw)
@@ -40,10 +40,12 @@ private[scarango] object RestApiProcessor {
         CollectionRemoved(c, raw)
       case c: CreateDocument =>
         DocumentCreated(c.database, documentData(entity))
-      case c: GetDocuments =>
-        Documents(documentsList(entity))
+      case c: ListDocuments =>
+        DocumentList(documentsList(entity))
       case c: RemoveDocument =>
         DocumentRemoved(c.database, documentData(entity))
+      case d: GetDocument =>
+        Document(entity, d.id, d.database)
       case any =>
         RawResponse(httpResponse)
     }

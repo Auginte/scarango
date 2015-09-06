@@ -54,19 +54,19 @@ class IntegrationTest extends AkkaSpec {
     "get multiple results: version and database list" in {
       val system = akkaSystem("TestMultiple")
       var version: Option[Version] = None
-      var databases: Option[Databases] = None
+      var databases: Option[DatabaseList] = None
 
       class ClientMultiple extends Actor {
         override def receive: Receive = {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
             db ! GetVersion
-            db ! GetDatabases
+            db ! ListDatabases
 
           case v: Version =>
             version = Some(v)
 
-          case d: Databases =>
+          case d: DatabaseList =>
             databases = Some(d)
             system.shutdown() // Testing, if it is second
 
@@ -100,28 +100,28 @@ class IntegrationTest extends AkkaSpec {
       val dbName = TestKit.unique
       var created: Option[DatabaseCreated] = None
       var removed: Option[DatabaseRemoved] = None
-      var databases1: Option[Databases] = None
-      var databases2: Option[Databases] = None
+      var databases1: Option[DatabaseList] = None
+      var databases2: Option[DatabaseList] = None
 
       class ClientDatabases extends Actor {
         override def receive: Receive = {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
             db ! CreateDatabase(dbName)
-            db ! request.Identifiable(GetDatabases, id = "created?")
+            db ! request.Identifiable(ListDatabases, id = "created?")
             db ! RemoveDatabase(dbName)
-            db ! request.Identifiable(GetDatabases, id = "removed?")
+            db ! request.Identifiable(ListDatabases, id = "removed?")
 
           case d: DatabaseCreated =>
             created = Some(d)
 
-          case response.Identifiable(d: Databases, id, _, _, _) if id == "created?" =>
+          case response.Identifiable(d: DatabaseList, id, _, _, _) if id == "created?" =>
             databases1 = Some(d)
 
           case r: DatabaseRemoved =>
             removed = Some(r)
 
-          case response.Identifiable(d: Databases, id, _, _, _) if id == "removed?" =>
+          case response.Identifiable(d: DatabaseList, id, _, _, _) if id == "removed?" =>
             databases2 = Some(d)
             system.shutdown()
 
@@ -237,8 +237,8 @@ class IntegrationTest extends AkkaSpec {
       var collectionRemoved: Option[CollectionRemoved] = None
       var created: Option[DocumentCreated] = None
       var removed: Option[DocumentRemoved] = None
-      var version: Option[Version] = None
-      var documents: Option[Documents] = None
+      var document: Option[Document] = None
+      var documents: Option[DocumentList] = None
       val documentData = """{"some": "data"}"""
 
       val db = system.actorOf(Props(new Scarango()))
@@ -247,8 +247,7 @@ class IntegrationTest extends AkkaSpec {
           case "start" =>
             db ! CreateCollection(collectionName)
             db ! CreateDocument(documentData, collectionName)
-            db ! GetDocuments(collectionName)
-            db ! GetVersion
+            db ! ListDocuments(collectionName)
 
           case "removeDocument" =>
             db ! RemoveDocument(created.get.id)
@@ -262,17 +261,19 @@ class IntegrationTest extends AkkaSpec {
 
           case c: DocumentCreated =>
             created = Some(c)
+            db ! GetDocument(c.id)
+
+          case d: Document =>
+            info("Document: " + d.json)
+            document = Some(d)
+            self ! "removeDocument"
 
           case r: DocumentRemoved =>
             removed = Some(r)
 
-          case v: Version =>
-            version = Some(v)
-
-          case d: Documents =>
+          case d: DocumentList =>
             documents = Some(d)
             info("Documents: " + d.ids.mkString(", "))
-            self ! "removeDocument"
 
           case r: CollectionRemoved =>
             collectionRemoved = Some(r)
@@ -301,6 +302,10 @@ class IntegrationTest extends AkkaSpec {
       assert(created.get.collection === collectionName)
       assert(created.get.raw.error === false)
 
+      assert(document.isDefined)
+      assert(document.get.id === created.get.id)
+      assert(document.get.json.startsWith( """{"some":"data","_id""""))
+
       assert(documents.isDefined)
       assert(documents.get.ids.length === 1)
       assert(documents.get.ids.head === created.get.id)
@@ -308,7 +313,6 @@ class IntegrationTest extends AkkaSpec {
       assert(removed.isDefined)
       assert(removed.get.id === created.get.id)
 
-      assert(version.isDefined)
       assert(collectionRemoved.isDefined)
     }
   }
@@ -323,7 +327,7 @@ class IntegrationTest extends AkkaSpec {
           case "start" =>
             val db = system.actorOf(Props(new Scarango()))
             db ! GetVersion
-            db ! GetDocuments // Common mistype: db ! GetDocuments("collection")
+            db ! ListDocuments // Common mistype: db ! GetDocuments("collection")
 
           case e: UnexpectedRequest =>
             info("Error description: " + e.getMessage)
@@ -348,7 +352,7 @@ class IntegrationTest extends AkkaSpec {
 
       system.awaitTermination(5 seconds)
       assert(exception.isDefined)
-      assert(exception.get.getMessage === "Unexpected Request to driver: GetDocuments")
+      assert(exception.get.getMessage === "Unexpected Request to driver: ListDocuments")
     }
   }
 }
