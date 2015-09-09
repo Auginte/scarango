@@ -3,7 +3,7 @@ import sbt._
 
 object build extends sbt.Build {
   val buildName = "scarango"
-  val buildVersion = "0.2.1"
+  val buildVersion = "0.2.3"
   val buildScalaVersion = "2.11.7"
   val buildOptions = Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
 
@@ -17,25 +17,29 @@ object build extends sbt.Build {
     "io.spray" %%  "spray-json" % "1.3.2",
     "io.spray" %% "spray-json" % "1.3.2",
     "org.scala-lang" % "scala-compiler" % buildScalaVersion,
+    "com.auginte" %% "scarango-macros" % "0.2.2", // See scarango-macros folder
     "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
   )
 
-  lazy val commonSettings = Seq(
+  val scarangoAtSonatype = Seq(
+    "OSS" at "https//oss.sonatype.org/content/groups/public"
+  )
+
+  lazy val scarango = Seq(
     name := buildName,
+    description := "Scala driver for ArangoDB",
     version := buildVersion,
     scalaVersion := buildScalaVersion,
     scalacOptions := buildOptions,
     mainClass := Some("com.auginte.scarango.Main"),
+    resolvers ++= scarangoAtSonatype,
     libraryDependencies ++= buildDependencies,
     scalacOptions in(Compile, doc) ++= Seq("-diagrams"),
     spray.revolver.RevolverPlugin.Revolver.settings
   )
 
-  lazy val scarangoMacros = RootProject(file("scarango-macros"))
-
   lazy val scarangoLibrary = (project in file(".")
-    settings (commonSettings: _*)
+    settings (scarango: _*)
     settings (Publish.settings: _*)
-    dependsOn scarangoMacros
     )
 }

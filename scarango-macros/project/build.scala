@@ -3,7 +3,7 @@ import sbt._
 
 object build extends sbt.Build {
   val buildName = "scarango-macros"
-  val buildVersion = "0.1"
+  val buildVersion = "0.2.2"
   val buildScalaVersion = "2.11.7"
   val buildOptions = Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
 
@@ -12,13 +12,19 @@ object build extends sbt.Build {
     "org.scala-lang" % "scala-compiler" % buildScalaVersion
   )
 
-  lazy val scarangoLibrary = Project(id = buildName, base = file(".")) settings
-    (
-      name := buildName,
-      version := buildVersion,
-      scalaVersion := buildScalaVersion,
-      scalacOptions := buildOptions,
-      libraryDependencies ++= buildDependencies,
-      scalacOptions in(Compile, doc) ++= Seq("-diagrams")
+  lazy val macrosSettings = Seq(
+    name := buildName,
+    version := buildVersion,
+    description := "Scala Macro part for scarango driver",
+    scalaVersion := buildScalaVersion,
+    scalacOptions := buildOptions,
+    libraryDependencies ++= buildDependencies,
+    scalacOptions in(Compile, doc) ++= Seq("-diagrams")
+  )
+  
+  lazy val scarangoMacros = (project in file(".")
+    settings (macrosSettings: _*)
+    settings (Publish.settings: _*)
     )
+  
 }

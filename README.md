@@ -9,7 +9,7 @@ This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and spray
 Stability
 ---------
 
-**This is early alpha**
+**This is early erly version**. Functionality, that is covered:
 
 * **Database**: Create, List, Remove, ~~by user~~, ~~with user data~~ 
 * **Collection**: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
@@ -20,8 +20,35 @@ Stability
 * ~~Export, replicate~~
 * Version, ~~WAL, System, Tasks, Log~~
 
-See [integration tests](src/test/scala/com/auginte/scarango/IntegrationTest.scala)
-for details of covered functionality and usage examples  
+Usage
+-----
+
+You may need to add the Sonatype nexus to your resolvers:
+
+```scala
+resolvers += "Sonatype OOS" at ""https//oss.sonatype.org/content/groups/public"
+```
+
+sbt:
+```scala
+libraryDependencies += "com.auginte" % "scarango_2.11" % "0.2.3"
+```
+
+Maven:
+```xml
+<dependency>
+  <groupId>com.auginte</groupId>
+  <artifactId>scarango_2.11</artifactId>
+  <version>0.2.3</version>
+  <classifier>sources</classifier>
+</dependency>
+```
+
+Examples
+--------
+
+* Clone [Example project](https://github.com/aurelijusb/scarango-example)
+* See [integration tests](src/test/scala/com/auginte/scarango/IntegrationTest.scala) 
 
 Why another driver
 ------------------
@@ -31,14 +58,13 @@ This client/driver concentrates on faster/easier development of
 * Akka/spray based applications
 * Graph intensive applications
 
-Meaning, not the coverage of newest API changes or fancy ORM.
+*Development still in progress*
 
 Architecture concepts
 ---------------------
 
 * Interacting with ArangoDB via Scarango Actor (reuse open HTTP connection)
 * All operations/actor messages grouped into requests, response and error packages
-* `request.groups` traits used for Functional grouping
 
 Similar projects
 ----------------
@@ -46,8 +72,8 @@ Similar projects
 * https://github.com/CharlesAHunt/proteus
 * https://github.com/sumito3478/scarango
 
-Run
----
+Run/Develop driver itself
+-------------------------
 
 Assuming, that ArangoDb is installed on http://127.0.0.1:8529
 
@@ -69,3 +95,8 @@ Test
 ```
 sbt test
 ```
+
+License
+-------
+
+[Apache 2.0](LICENSE)
