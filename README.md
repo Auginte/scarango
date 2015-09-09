@@ -26,7 +26,7 @@ Usage
 You may need to add the Sonatype nexus to your resolvers:
 
 ```scala
-resolvers += "Sonatype OOS" at ""https://oss.sonatype.org/content/repositories/releases"
+resolvers += "Sonatype OOS" at "https://oss.sonatype.org/content/repositories/releases"
 ```
 
 sbt:
