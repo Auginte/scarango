@@ -9,7 +9,7 @@ This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and spray
 Stability
 ---------
 
-**This is early erly version**. Functionality, that is covered:
+**This is early version**. Functionality:
 
 * **Database**: Create, List, Remove, ~~by user~~, ~~with user data~~ 
 * **Collection**: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
@@ -43,6 +43,7 @@ Maven:
   <classifier>sources</classifier>
 </dependency>
 ```
+or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.3|)
 
 Examples
 --------
