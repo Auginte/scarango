@@ -11,11 +11,8 @@ object build extends sbt.Build {
   val sprayVersion = "1.3.3"
   val buildDependencies = Seq(
     "com.typesafe.akka" % "akka-actor_2.11" % akkaVersion,
-    "io.spray" %% "spray-can" % sprayVersion,
-    "io.spray" %% "spray-routing" % sprayVersion,
     "io.spray" %% "spray-client" % sprayVersion,
     "io.spray" %% "spray-json" % "1.3.2",
-    "org.scala-lang" % "scala-compiler" % buildScalaVersion,
     "com.auginte" %% "scarango-macros" % "0.2.2", // See scarango-macros folder
     "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
   )
