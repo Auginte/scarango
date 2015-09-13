@@ -14,15 +14,10 @@ object build extends sbt.Build {
     "io.spray" %% "spray-can" % sprayVersion,
     "io.spray" %% "spray-routing" % sprayVersion,
     "io.spray" %% "spray-client" % sprayVersion,
-    "io.spray" %%  "spray-json" % "1.3.2",
     "io.spray" %% "spray-json" % "1.3.2",
     "org.scala-lang" % "scala-compiler" % buildScalaVersion,
     "com.auginte" %% "scarango-macros" % "0.2.2", // See scarango-macros folder
     "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
-  )
-
-  val scarangoAtSonatype = Seq(
-    "OSS" at "https//oss.sonatype.org/content/groups/public"
   )
 
   lazy val scarangoSettings = Seq(
@@ -32,14 +27,16 @@ object build extends sbt.Build {
     scalaVersion := buildScalaVersion,
     scalacOptions := buildOptions,
     mainClass := Some("com.auginte.scarango.Main"),
-    resolvers ++= scarangoAtSonatype,
     libraryDependencies ++= buildDependencies,
     scalacOptions in(Compile, doc) ++= Seq("-diagrams"),
     spray.revolver.RevolverPlugin.Revolver.settings
   )
 
+  lazy val scarangoMacros = RootProject(file("scarango-macros"))
+
   lazy val scarango = (project in file(".")
     settings (scarangoSettings: _*)
     settings (Publish.settings: _*)
+    dependsOn scarangoMacros
     )
 }
