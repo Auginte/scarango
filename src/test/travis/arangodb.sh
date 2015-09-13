@@ -5,7 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd $DIR
 
 #VERSION=2.6.5 #Will be provided by .travis.yml
-NAME=ArangoDB-$VERSION
+NAME=ArangoDB-$ARANGO_DB_VERSION
 
 if [ ! -d "$DIR/$NAME" ]; then
   # download ArangoDB
