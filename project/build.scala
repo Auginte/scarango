@@ -20,6 +20,10 @@ object build extends sbt.Build {
     "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
   )
 
+  val scarangoAtSonatype = Seq(
+    "OSS Nexus" at "https://oss.sonatype.org/content/groups/public"
+  )
+
   lazy val scarangoSettings = Seq(
     name := buildName,
     description := "Scala driver for ArangoDB",
@@ -27,16 +31,14 @@ object build extends sbt.Build {
     scalaVersion := buildScalaVersion,
     scalacOptions := buildOptions,
     mainClass := Some("com.auginte.scarango.Main"),
+    resolvers ++= scarangoAtSonatype,
     libraryDependencies ++= buildDependencies,
     scalacOptions in(Compile, doc) ++= Seq("-diagrams"),
     spray.revolver.RevolverPlugin.Revolver.settings
   )
 
-  lazy val scarangoMacros = RootProject(file("scarango-macros"))
-
   lazy val scarango = (project in file(".")
     settings (scarangoSettings: _*)
     settings (Publish.settings: _*)
-    dependsOn scarangoMacros
     )
 }
