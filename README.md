@@ -67,6 +67,7 @@ Architecture concepts
 
 * Interacting with ArangoDB via Scarango Actor (reuse open HTTP connection)
 * All operations/actor messages grouped into requests, response and error packages
+* Use strong types for names of Databases and Collections, so currently used names be given implicitly 
 
 Similar projects
 ----------------

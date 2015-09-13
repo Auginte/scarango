@@ -2,12 +2,13 @@ package com.auginte.scarango
 
 import akka.actor._
 import com.auginte.scarango.common.TestKit
-import com.auginte.scarango.errors.{UnexpectedRequest, ScarangoError}
+import com.auginte.scarango.errors.{ScarangoError, UnexpectedRequest}
 import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.request._
 import com.auginte.scarango.response._
 import com.auginte.scarango.response.meta.collection.{Statuses, Types}
-
+import com.auginte.scarango.state.{DatabaseNames, CollectionName, DatabaseName}
+import scala.language.implicitConversions
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -44,7 +45,7 @@ class IntegrationTest extends AkkaSpec {
       val client = system.actorOf(Props(new ClientGetVersion()))
       client ! "start"
 
-      system.awaitTermination(10 seconds)
+      system.awaitTermination(5 seconds)
       assert(version.isDefined)
       info("Version: " + version.get.version)
 
@@ -83,21 +84,22 @@ class IntegrationTest extends AkkaSpec {
       val client = system.actorOf(Props(new ClientMultiple()))
       client ! "start"
 
-      system.awaitTermination(10 seconds)
+      system.awaitTermination(5 seconds)
       assert(version.isDefined)
       info("Version: " + version.get.version)
       assert(version.get.version === latestApiVersion)
 
       assert(databases.isDefined)
       info("Databases: " + databases.get.result.mkString(", "))
-      assert(databases.get.result.contains("_system"))
+      assert(DatabaseNames.default ===  DatabaseName("_system"))
+      assert(databases.get.result.contains(DatabaseNames.default))
       assert(databases.get.code === 200)
       assert(!databases.get.error)
     }
 
     "create and drop new database" in {
       val system = akkaSystem("TestCreateDatabase")
-      val dbName = TestKit.unique
+      val dbName = DatabaseName(TestKit.unique)
       var created: Option[DatabaseCreated] = None
       var removed: Option[DatabaseRemoved] = None
       var databases1: Option[DatabaseList] = None
@@ -138,7 +140,7 @@ class IntegrationTest extends AkkaSpec {
       val client = system.actorOf(Props(new ClientDatabases()))
       client ! "start"
 
-      system.awaitTermination(10 seconds)
+      system.awaitTermination(5 seconds)
       assert(created.isDefined)
       assert(created.get.name === dbName)
       assert(created.get.raw.result === true)
@@ -146,7 +148,7 @@ class IntegrationTest extends AkkaSpec {
 
       assert(databases1.isDefined)
       info("Databases: " + databases1.get.result.mkString(", "))
-      assert(databases1.get.result.contains("_system"))
+      assert(databases1.get.result.contains(DatabaseNames.default))
       assert(databases1.get.result.contains(dbName))
       assert(databases1.get.code === 200)
       assert(!databases1.get.error)
@@ -160,7 +162,7 @@ class IntegrationTest extends AkkaSpec {
 
       assert(databases2.isDefined)
       info("Databases: " + databases2.get.result.mkString(", "))
-      assert(databases2.get.result.contains("_system"))
+      assert(databases2.get.result.contains(DatabaseNames.default))
       assert(!databases2.get.result.contains(dbName))
       assert(databases2.get.code === 200)
       assert(!databases2.get.error)
@@ -168,7 +170,7 @@ class IntegrationTest extends AkkaSpec {
 
     "create and drop collection in _system database" in {
       val system = akkaSystem("TestCreateCollection")
-      val collectionName = TestKit.unique
+      val collectionName = CollectionName(TestKit.unique)
       var created: Option[CollectionCreated] = None
       var collection: Option[Collection] = None
       var removed: Option[CollectionRemoved] = None
@@ -204,12 +206,12 @@ class IntegrationTest extends AkkaSpec {
       val client = system.actorOf(Props(new ClientCollections()))
       client ! "start"
 
-      system.awaitTermination(10 seconds)
+      system.awaitTermination(5 seconds)
       assert(created.isDefined)
       assert(created.get.name === collectionName)
       assert(created.get.id.length > 3)
-      assert(created.get.error === false)
-      assert(created.get.code === 200)
+      assert(created.get.raw.error === false)
+      assert(created.get.raw.code === 200)
       info("New collection: " + created.get.name)
       info("With id: " + created.get.id)
 
@@ -232,7 +234,7 @@ class IntegrationTest extends AkkaSpec {
       info("Testing removal of document, while database still processing read operation")
 
       val system = akkaSystem("TestCreateDocument")
-      val collectionName = TestKit.unique
+      val collectionName = CollectionName(TestKit.unique)
       var collectionCreated: Option[CollectionCreated] = None
       var collectionRemoved: Option[CollectionRemoved] = None
       var created: Option[DocumentCreated] = None
@@ -353,6 +355,78 @@ class IntegrationTest extends AkkaSpec {
       system.awaitTermination(5 seconds)
       assert(exception.isDefined)
       assert(exception.get.getMessage === "Unexpected Request to driver: ListDocuments")
+    }
+  }
+
+  "Need faster software development" should {
+    "use current database implicitly" in {
+      val system = akkaSystem("CurrentDatabaseTest")
+
+      var database: Option[DatabaseCreated] = None
+      var collection: Option[CollectionCreated] = None
+      var document: Option[DocumentCreated] = None
+      var documents: Option[DocumentList] = None
+      val documentContent = """{"test":"document"}"""
+      implicit val currentDatabase = DatabaseName(TestKit.unique)
+      implicit val currentCollection = CollectionName(TestKit.unique)
+      info(s"Will be using: $currentDatabase")
+
+      val db = system.actorOf(Props(new Scarango()))
+      class ClientState extends Actor {
+        override def receive: Receive = {
+          case "start" =>
+            db ! CreateDatabase(currentDatabase)
+            db ! CreateCollection(currentCollection) // No database provided
+            db ! CreateDocument(documentContent) // No collection, no database provided
+            db ! ListDocuments(currentCollection)
+
+          case "cleanup" =>
+            db ! RemoveCollection(currentCollection) // No database provided
+            db ! RemoveDatabase(currentDatabase)
+
+          case d: DatabaseCreated => database = Some(d)
+          case c: CollectionCreated => collection = Some(c)
+          case d: DocumentCreated => document = Some(d)
+          case d: DocumentList =>
+            documents = Some(d)
+            self ! "cleanup"
+
+          case _: CollectionRemoved => info("Collection with documents removed")
+          case _: DatabaseRemoved => info("Database removed")
+
+          case e: ScarangoError =>
+            fail("[ScarangoError] " + e.getMessage)
+            context.system.shutdown()
+
+          case other =>
+            fail("[UNEXPECTED] " + other)
+            context.system.shutdown()
+        }
+
+        val client = system.actorOf(Props(new ClientState()))
+        client ! "start"
+
+
+        system.awaitTermination(5 seconds)
+        assert(database.isDefined)
+        assert(database.get.name === currentDatabase)
+        assert(currentDatabase !== DatabaseNames.default)
+
+        assert(collection.isDefined)
+        assert(collection.get.database === currentDatabase)
+        assert(collection.get.name === currentCollection)
+        assert(currentCollection !== "")
+
+        assert(document.isDefined)
+        assert(document.get.collection === currentCollection)
+        assert(document.get.database === currentDatabase)
+        assert(document.get.raw.error === false)
+
+        assert(documents.isDefined)
+        assert(documents.get.collection === currentCollection)
+        assert(documents.get.database === currentDatabase)
+        assert(documents.get.ids.length === Array(document.get.id))
+      }
     }
   }
 }

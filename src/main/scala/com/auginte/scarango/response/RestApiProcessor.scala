@@ -1,7 +1,7 @@
 package com.auginte.scarango.response
 
 import com.auginte.scarango.request._
-import com.auginte.scarango.response.raw.{RawDocumentData, RawDocuments, BoolResponse, IdResponse}
+import com.auginte.scarango.response.raw._
 import com.auginte.scarango.{request => r, response}
 import spray.http.HttpResponse
 import spray.json.DefaultJsonProtocol._
@@ -29,9 +29,8 @@ private[scarango] object RestApiProcessor {
       case d: RemoveDatabase =>
         val raw = boolResponse(entity)
         DatabaseRemoved(d, raw)
-      case _: CreateCollection =>
-        implicit val format = jsonFormat8(CollectionCreated)
-        JsonParser(entity).convertTo[CollectionCreated]
+      case c: CreateCollection =>
+        CollectionCreated(c.database, collectionData(entity))
       case c: GetCollection =>
         implicit val format = jsonFormat7(Collection)
         JsonParser(entity).convertTo[Collection]
@@ -59,6 +58,11 @@ private[scarango] object RestApiProcessor {
   private def idResponse(entity: String): IdResponse = {
     implicit val format = jsonFormat3(IdResponse)
     JsonParser(entity).convertTo[IdResponse]
+  }
+
+  private def collectionData(entity: String): RawCollectionCreated = {
+    implicit val format = jsonFormat8(RawCollectionCreated)
+    JsonParser(entity).convertTo[RawCollectionCreated]
   }
 
   private def documentData(entity: String): RawDocumentData = {

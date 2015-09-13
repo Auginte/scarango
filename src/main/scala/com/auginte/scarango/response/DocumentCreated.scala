@@ -1,7 +1,7 @@
 package com.auginte.scarango.response
 
 import com.auginte.scarango.response.raw.RawDocumentData
-import com.auginte.scarango.state.DatabaseName
+import com.auginte.scarango.state.{DatabaseName, CollectionName}
 
 /**
  * Response about document creation
@@ -9,5 +9,5 @@ import com.auginte.scarango.state.DatabaseName
 case class DocumentCreated(database: DatabaseName, raw: RawDocumentData) extends Data {
   def id = raw._id
 
-  def collection = id.split("/")(0)
+  def collection = CollectionName(id.split("/")(0))
 }

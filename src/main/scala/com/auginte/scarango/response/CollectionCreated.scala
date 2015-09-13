@@ -1,5 +1,12 @@
 package com.auginte.scarango.response
 
-import com.auginte.scarango.state.CollectionName
+import com.auginte.scarango.response.raw.RawCollectionCreated
+import com.auginte.scarango.state.DatabaseName
 
-case class CollectionCreated(id: String, name: CollectionName, waitForSync: Boolean, isVolatile: Boolean, status: Int, `type`: Int, error: Boolean, code: Int) extends Created
+/**
+ * Information about newly created collection
+ */
+case class CollectionCreated(database: DatabaseName, raw: RawCollectionCreated) extends Created {
+  val name = raw.name
+  def id = raw.id
+}

@@ -17,9 +17,9 @@ case class DocumentList(raw: RawDocuments) extends Data {
     parts(5) + "/" + parts(6)
   }
 
-  private def collectionName(path: String): String = parsePath(path)(5)
+  private def collectionName(path: String): CollectionName = parsePath(path)(5)
 
-  private def databaseName(path: String): String = parsePath(path)(2)
+  private def databaseName(path: String): DatabaseName = parsePath(path)(2)
 
   private def parsePath(path: String): Array[String] = {
     val parts = path.split("/")

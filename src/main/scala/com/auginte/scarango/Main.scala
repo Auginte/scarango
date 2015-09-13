@@ -5,6 +5,7 @@ import com.auginte.scarango.common.TestKit
 import com.auginte.scarango.errors.{ScarangoError, UnexpectedResponse}
 import com.auginte.scarango.request._
 import com.auginte.scarango.response._
+import com.auginte.scarango.state.{CollectionName, DatabaseName}
 
 /**
  * Class for faster testing
@@ -12,8 +13,8 @@ import com.auginte.scarango.response._
 object Main extends App {
   class Client extends Actor {
 
-    val dbName = TestKit.unique
-    val collectionName = TestKit.unique
+    implicit val dbName = DatabaseName(TestKit.unique)
+    implicit val collectionName = CollectionName(TestKit.unique)
     val documentData = """{"some":"data"}"""
     var newDocumentId: String = ""
 
@@ -31,15 +32,15 @@ object Main extends App {
       case "start" =>
         db ! GetVersion
         db ! CreateDatabase(dbName)
-        db ! CreateCollection(collectionName)(dbName)
-        db ! GetCollection(collectionName)(dbName)
-        db ! CreateDocument(documentData)(collectionName)(dbName)
+        db ! CreateCollection(collectionName)
+        db ! GetCollection(collectionName)
+        db ! CreateDocument(documentData)
 
       case "removeDocument" =>
-        db ! RemoveDocument(newDocumentId)(dbName)
+        db ! RemoveDocument(newDocumentId)
 
       case "cleanup" =>
-        db ! RemoveCollection(collectionName)(dbName)
+        db ! RemoveCollection(collectionName)
         db ! request.Identifiable(ListDatabases, id = "with database")
         db ! RemoveDatabase(dbName)
         db ! request.Identifiable(ListDatabases, id = "database removed")
@@ -69,8 +70,8 @@ object Main extends App {
       case c: DocumentCreated =>
         ok("Document created: " + c.id)
         newDocumentId = c.id
-        db ! GetDocument(c.id)(dbName)
-        db ! ListDocuments(collectionName)(dbName)
+        db ! GetDocument(c.id)
+        db ! ListDocuments(collectionName)
 
       case d: Document =>
         ok(s"Document ID: ${d.id} DATA: ${d.json}")
