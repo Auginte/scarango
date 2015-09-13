@@ -3,7 +3,7 @@ import sbt._
 
 object build extends sbt.Build {
   val buildName = "scarango"
-  val buildVersion = "0.2.3"
+  val buildVersion = "0.2.4-SNAPSHOT"
   val buildScalaVersion = "2.11.7"
   val buildOptions = Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
 
@@ -25,7 +25,7 @@ object build extends sbt.Build {
     "OSS" at "https//oss.sonatype.org/content/groups/public"
   )
 
-  lazy val scarango = Seq(
+  lazy val scarangoSettings = Seq(
     name := buildName,
     description := "Scala driver for ArangoDB",
     version := buildVersion,
@@ -38,8 +38,8 @@ object build extends sbt.Build {
     spray.revolver.RevolverPlugin.Revolver.settings
   )
 
-  lazy val scarangoLibrary = (project in file(".")
-    settings (scarango: _*)
+  lazy val scarango = (project in file(".")
+    settings (scarangoSettings: _*)
     settings (Publish.settings: _*)
     )
 }
