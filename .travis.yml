@@ -6,7 +6,7 @@ scala:
 env:
   - ARANGO_DB_VERSION=2.6.8 SCARANGO_VERSION=0.2.4-SNAPSHOT
 before_script:
-  - chmod +x ./src/test/travis/arangodb.sh
+  - "./src/test/travis/publishingMock.sh"
   - "./src/test/travis/arangodb.sh"
 
 # Tricks to avoid unnecessary cache updates
