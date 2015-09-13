@@ -246,7 +246,7 @@ class IntegrationTest extends AkkaSpec {
         override def receive: Receive = {
           case "start" =>
             db ! CreateCollection(collectionName)
-            db ! CreateDocument(documentData, collectionName)
+            db ! CreateDocument(documentData)(collectionName)
             db ! ListDocuments(collectionName)
 
           case "removeDocument" =>

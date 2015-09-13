@@ -7,6 +7,8 @@ package com.auginte
     - [[com.auginte.scarango.request]] - Messages to send from you (client) to driver (wrapper)
     - [[com.auginte.scarango.response]] - Messages of success sent back from driver (wrapper) to you (client)
     - [[com.auginte.scarango.errors]] - Messages of failure sent back from driver (wrapper) to you (client)
+    - [[com.auginte.scarango.state]] - Helpers when making multiple operations on same database or collection
+    - [[com.auginte.scarango.common]] - Other useful helpers
  */
 package object scarango {
   /**

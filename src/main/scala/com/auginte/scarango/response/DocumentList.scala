@@ -1,15 +1,16 @@
 package com.auginte.scarango.response
 
 import com.auginte.scarango.response.raw.RawDocuments
+import com.auginte.scarango.state.{DatabaseName, CollectionName}
 
 case class DocumentList(raw: RawDocuments) extends Data {
   @inline def paths: Array[String] = raw.documents
 
   def ids: Array[String] = paths map documentId
 
-  def collection = paths.headOption.map(collectionName).getOrElse("")
+  def collection: CollectionName = paths.headOption.map(collectionName).getOrElse("")
 
-  def database = paths.headOption.map(databaseName).getOrElse("")
+  def database: DatabaseName = paths.headOption.map(databaseName).getOrElse("")
 
   private def documentId(path: String): String = {
     val parts = parsePath(path)

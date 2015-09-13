@@ -1,12 +1,13 @@
 package com.auginte.scarango.request
 
+import com.auginte.scarango.state.{CollectionName, DatabaseName}
 import spray.http.Uri
 import spray.json.JsValue
 
 /**
  * Operation to create new document
  */
-case class CreateDocument(document: String, collection: String, database: String = "_system", createCollection: Boolean = false, waitForSync: Boolean = true)
+case class CreateDocument(document: String, createCollection: Boolean = false, waitForSync: Boolean = true)(val collection: CollectionName)(implicit val database: DatabaseName = "_system")
   extends CreateRequest with groups.Collection {
   override protected def toJson: JsValue = throw new RuntimeException("Should be overwritten in later call")
 
