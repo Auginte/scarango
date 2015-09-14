@@ -1,11 +1,16 @@
 package com.auginte.scarango.response
 
-import com.auginte.scarango.response.common.CommonResponse
 import com.auginte.scarango.response.meta.collection.{EnumStatuses, EnumTypes}
-import com.auginte.scarango.state.CollectionName
+import com.auginte.scarango.response.raw.RawCollection
+import com.auginte.scarango.state.DatabaseName
 
-case class Collection(id: String, name: CollectionName, isSystem: Boolean, status: Int, `type`: Int, error: Boolean, code: Int)
+case class Collection(database: DatabaseName, raw: RawCollection)
   extends Data
-  with CommonResponse
   with EnumStatuses
-  with EnumTypes
+  with EnumTypes {
+
+  val id = raw.id
+  val name = raw.name
+  override val status: Int = raw.status
+  override val `type`: Int = raw.`type`
+}

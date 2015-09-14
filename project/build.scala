@@ -3,7 +3,7 @@ import sbt._
 
 object build extends sbt.Build {
   val buildName = "scarango"
-  val buildVersion = "0.2.4-SNAPSHOT"
+  val buildVersion = "0.2.4"
   val buildScalaVersion = "2.11.7"
   val buildOptions = Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
 

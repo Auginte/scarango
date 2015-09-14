@@ -1,4 +1,4 @@
-package com.auginte.scarango.common
+package com.auginte.scarango.request.parts
 
 import spray.http.BasicHttpCredentials
 import spray.http.HttpHeaders.Authorization
@@ -30,4 +30,6 @@ class Authorisation(val user: String, val password: String) {
 
 object Authorisation {
   def default = new Authorisation("root", "")
+
+  def forUser(user: User) = new Authorisation(user.name, user.password)
 }

@@ -1,6 +1,6 @@
 package com.auginte.scarango
 
-import com.auginte.scarango.common.Authorisation
+import com.auginte.scarango.request.parts.Authorisation
 import org.scalatest.{ShouldMatchers, WordSpec}
 
 /**

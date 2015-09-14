@@ -83,7 +83,7 @@ class Scarango extends Actor with AkkaLogging {
   private def requestToDatabase(): Unit = dbConnection match {
     case Some(connection) if connectionEstablished && dbReadyToReceive => queue.dequeueOption match {
       case Some((packet, tail)) =>
-        debug("Sending", packet.request, packet.request.uri)
+        debug("Sending", packet.request.method, packet.request.entity.asString, packet.request.uri)
         dbReadyToReceive = false
         connection ! packet.request.http
       case None =>

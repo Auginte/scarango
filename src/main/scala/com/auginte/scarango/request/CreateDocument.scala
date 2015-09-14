@@ -1,5 +1,6 @@
 package com.auginte.scarango.request
 
+import com.auginte.scarango.request.parts.Authorisation
 import com.auginte.scarango.state.{DatabaseNames, CollectionName, DatabaseName}
 import spray.http.Uri
 import spray.json.JsValue
@@ -7,8 +8,13 @@ import spray.json.JsValue
 /**
  * Operation to create new document
  */
-case class CreateDocument(document: String, createCollection: Boolean = false, waitForSync: Boolean = true)(implicit val collection: CollectionName, implicit val database: DatabaseName = DatabaseNames.default)
+case class CreateDocument(document: String, createCollection: Boolean = false, waitForSync: Boolean = true)
+                         (implicit val collection: CollectionName,
+                          implicit val database: DatabaseName = DatabaseNames.default,
+                          override implicit val authorisation: Authorisation = Authorisation.default)
   extends CreateRequest with groups.Collection {
+
+
   override protected def toJson: JsValue = throw new RuntimeException("Should be overwritten in later call")
 
   override protected def entityData: String = document

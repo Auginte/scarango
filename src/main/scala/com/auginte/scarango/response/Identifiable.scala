@@ -1,7 +1,9 @@
 package com.auginte.scarango.response
 
-import com.auginte.scarango.common.{Authorisation, StateParameters}
+import com.auginte.scarango.common.StateParameters
 import com.auginte.scarango.request.Request
+import com.auginte.scarango.request.parts.Authorisation
+import com.auginte.scarango.state.DatabaseName
 
 /**
  * Wrapping response data and request.
@@ -15,4 +17,4 @@ case class Identifiable(
                          id: Any,
                          request: Request,
                          authorisation: Authorisation,
-                         database: String) extends Response with StateParameters
+                         database: DatabaseName) extends Response with StateParameters

@@ -2,12 +2,15 @@ package com.auginte.scarango
 
 import akka.actor._
 import com.auginte.scarango.common.TestKit
-import com.auginte.scarango.errors.{ScarangoError, UnexpectedRequest}
+import com.auginte.scarango.errors.{UnexpectedResponse, ScarangoError, UnexpectedRequest}
 import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.request._
+import com.auginte.scarango.request.parts.{Authorisation, User}
 import com.auginte.scarango.response._
 import com.auginte.scarango.response.meta.collection.{Statuses, Types}
 import com.auginte.scarango.state.{DatabaseNames, CollectionName, DatabaseName}
+import spray.http.StatusCodes
+import sun.misc.BASE64Decoder
 import scala.language.implicitConversions
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -358,7 +361,7 @@ class IntegrationTest extends AkkaSpec {
     }
   }
 
-  "Need faster software development" should {
+  "For faster software development" should {
     "use current database implicitly" in {
       val system = akkaSystem("CurrentDatabaseTest")
 
@@ -406,7 +409,6 @@ class IntegrationTest extends AkkaSpec {
         val client = system.actorOf(Props(new ClientState()))
         client ! "start"
 
-
         system.awaitTermination(5 seconds)
         assert(database.isDefined)
         assert(database.get.name === currentDatabase)
@@ -427,6 +429,103 @@ class IntegrationTest extends AkkaSpec {
         assert(documents.get.database === currentDatabase)
         assert(documents.get.ids.length === Array(document.get.id))
       }
+    }
+    "allow to create and use multiple database with custom credentials" in {
+      val system = akkaSystem("CurrentDatabaseTest")
+
+      val authorisedUsers1 = List(
+        User("owner", "123456", active = true, Map("name" -> "John Smith", "email" -> "a@b.com")),
+        User("public", "", active = false)
+      )
+      val authorisedUsers2 = List(
+        User("owner", "qwerty", active = true, Map("name" -> "Robot", "email" -> "c@d.com")),
+        User("public", "", active = false)
+      )
+      val userDatabase1 = DatabaseName("u_" + TestKit.unique)
+      val userDatabase2 = DatabaseName("u_" + TestKit.unique)
+      val userCollection1 = CollectionName("userCollection1")
+      val userCollection2 = CollectionName("userCollection2")
+      val userAuthorisation1 = Authorisation.forUser(authorisedUsers1.head)
+      val userAuthorisation2 = Authorisation.forUser(authorisedUsers2.head)
+
+      var databaseCreated: List[DatabaseCreated] = List()
+      var collectionCreated: List[CollectionCreated] = List()
+      var collections: List[Collection] = List()
+      var databaseRemoved: List[DatabaseRemoved] = List()
+      var unauthorised: List[Request] = List()
+
+      val db = system.actorOf(Props(new Scarango()))
+      class CustomCredentials extends Actor {
+        override def receive: Receive = {
+          case "start" =>
+            db ! CreateDatabase(userDatabase1, authorisedUsers1)
+            db ! CreateDatabase(userDatabase2, authorisedUsers2)
+            db ! CreateCollection(userCollection1)(userDatabase1, userAuthorisation1)
+            db ! CreateCollection(userCollection2)(userDatabase2, userAuthorisation2)
+            db ! GetCollection(userCollection1)(userDatabase1, userAuthorisation1)
+            db ! GetCollection(userCollection2)(userDatabase2, userAuthorisation2)
+
+            db ! GetCollection(userCollection1)(userDatabase1, userAuthorisation2) // first database with wrong credentials
+
+            db ! RemoveDatabase(userDatabase1)
+            db ! RemoveDatabase(userDatabase2)
+
+          case d : DatabaseCreated => databaseCreated = d :: databaseCreated
+          case c : CollectionCreated => collectionCreated = c :: collectionCreated
+          case c : Collection => collections = c :: collections
+          case d : DatabaseRemoved =>
+            databaseRemoved = d :: databaseRemoved
+            if (databaseRemoved.size == 2) {
+              context.system.shutdown()
+            }
+
+          case r: UnexpectedResponse if r.raw.status == StatusCodes.Unauthorized =>
+            unauthorised = r.lastRequest :: unauthorised
+
+          case e: ScarangoError =>
+            fail("[ScarangoError] " + e.getMessage)
+            context.system.shutdown()
+
+          case other =>
+            fail("[UNEXPECTED] " + other)
+            context.system.shutdown()
+        }
+      }
+      val client = system.actorOf(Props(new CustomCredentials()))
+      client ! "start"
+
+      system.awaitTermination(5 seconds)
+      assert(databaseCreated.size == 2)
+      assert(databaseCreated.head.name == userDatabase2)
+      assert(databaseCreated(1).name == userDatabase1)
+
+      assert(collectionCreated.size == 2)
+      assert(collectionCreated.head.name == userCollection2)
+      assert(collectionCreated.head.database == userDatabase2)
+      assert(collectionCreated(1).name == userCollection1)
+      assert(collectionCreated(1).database == userDatabase1)
+
+      assert(collections.size == 2)
+      assert(collections.head.name == userCollection2)
+      assert(collections.head.database == userDatabase2)
+      assert(collections(1).name == userCollection1)
+      assert(collections(1).database == userDatabase1)
+
+      assert(unauthorised.size == 1)
+      unauthorised.head match {
+        case c: GetCollection =>
+          assert(c.name == userCollection1)
+          assert(c.database == userDatabase1)
+          info("Headers of unauthorised: " + unauthorised.head.http.headers.mkString(" | "))
+          val requestCredentials = unauthorised.head.http.headers.head.value.split("Basic ")(1)
+          val decoded = new String(new BASE64Decoder().decodeBuffer(requestCredentials))
+          info("Requested with credentials: " + decoded)
+        case other => fail("Unauthorised error for wrong request: " + other)
+      }
+
+      assert(databaseRemoved.size == 2)
+      assert(databaseRemoved.head.name == userDatabase2)
+      assert(databaseRemoved(1).name == userDatabase1)
     }
   }
 }

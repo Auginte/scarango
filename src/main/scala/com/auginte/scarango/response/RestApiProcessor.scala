@@ -16,7 +16,7 @@ private[scarango] object RestApiProcessor {
     request match {
       case r.Identifiable(r, id, authentication, database) =>
         val inner = process(r, httpResponse)
-        response.Identifiable(inner, id, request, authentication, database)
+        response.Identifiable(inner, id, request, database, authentication)
       case GetVersion =>
         implicit val versionFormat = jsonFormat2(Version)
         JsonParser(entity).convertTo[Version]
@@ -30,10 +30,9 @@ private[scarango] object RestApiProcessor {
         val raw = boolResponse(entity)
         DatabaseRemoved(d, raw)
       case c: CreateCollection =>
-        CollectionCreated(c.database, collectionData(entity))
+        CollectionCreated(c.database, collectionCreatedData(entity))
       case c: GetCollection =>
-        implicit val format = jsonFormat7(Collection)
-        JsonParser(entity).convertTo[Collection]
+        Collection(c.database, collectionData(entity))
       case c: RemoveCollection =>
         val raw = idResponse(entity)
         CollectionRemoved(c, raw)
@@ -60,9 +59,14 @@ private[scarango] object RestApiProcessor {
     JsonParser(entity).convertTo[IdResponse]
   }
 
-  private def collectionData(entity: String): RawCollectionCreated = {
+  private def collectionCreatedData(entity: String): RawCollectionCreated = {
     implicit val format = jsonFormat8(RawCollectionCreated)
     JsonParser(entity).convertTo[RawCollectionCreated]
+  }
+
+  private def collectionData(entity: String): RawCollection = {
+    implicit val format = jsonFormat7(RawCollection)
+    JsonParser(entity).convertTo[RawCollection]
   }
 
   private def documentData(entity: String): RawDocumentData = {
