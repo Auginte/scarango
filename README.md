@@ -78,7 +78,7 @@ Similar projects
 Run/Develop driver itself
 -------------------------
 
-Assuming, that ArangoDb is installed on http://127.0.0.1:8529
+Assuming, that ArangoDb is installed on http://127.0.0.1:8529 and `disable-authentication=false`
 
 Run once:
 
