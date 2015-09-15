@@ -48,9 +48,18 @@ if [ "x$process" == "x" ]; then
 fi
 
 echo "Waiting until ArangoDB is ready on port 8529"
-while [[ -z `curl -s 'http://127.0.0.1:8529/_api/version' ` ]] ; do
+echo 'Using "root":"" authentication'
+n=0
+timeout=25
+while [[ (-z `curl -H 'Authorization: Basic cm9vdDo=' -s 'http://127.0.0.1:8529/_api/version' `) && (n -lt timeout) ]] ; do
   echo -n "."
-  sleep 2s
+  sleep 1s
+  n=$[$n+1]
 done
+if [[ n -eq timeout ]];
+then
+    echo -e "\n\e[41m[ERROR]\e[00m ArangoDB not starting! Timeout reached."
+    exit 13
+fi
 
 echo "ArangoDB is up"
