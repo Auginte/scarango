@@ -2,7 +2,7 @@ Just another Scala driver for ArangoDB
 ======================================
 
 [![Build Status](https://secure.travis-ci.org/aurelijusb/scarango.png?branch=master)](http://travis-ci.org/aurelijusb/scarango)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.auginte/scarango_2.11/badge.svg)](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.3|)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.auginte/scarango_2.11/badge.svg)](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.4|)
 
 Actor based Scala driver/client for ArangoDB.
 This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and spray.io.
@@ -12,7 +12,7 @@ Stability
 
 **This is early version**. Functionality:
 
-* **Database**: Create, List, Remove, ~~by user~~, ~~with user data~~ 
+* **Database**: Create, List, Remove, ~~by user~~, with user data 
 * **Collection**: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
 * **Document**: Create, List, Read, ~~Update~~, Remove, ~~Test~~
 * ~~Query, Cursor, Explain~~
@@ -32,7 +32,7 @@ resolvers += "Sonatype OOS" at "https://oss.sonatype.org/content/repositories/re
 
 sbt:
 ```scala
-libraryDependencies += "com.auginte" % "scarango_2.11" % "0.2.3"
+libraryDependencies += "com.auginte" % "scarango_2.11" % "0.2.4"
 ```
 
 Maven:
@@ -40,11 +40,10 @@ Maven:
 <dependency>
   <groupId>com.auginte</groupId>
   <artifactId>scarango_2.11</artifactId>
-  <version>0.2.3</version>
-  <classifier>sources</classifier>
+  <version>0.2.4</version>
 </dependency>
 ```
-or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.3|)
+or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.4|)
 
 Examples
 --------
