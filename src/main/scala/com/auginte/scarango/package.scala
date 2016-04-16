@@ -16,5 +16,5 @@ package object scarango {
    *
    * Tests are depending on that driver
    */
-  val latestApiVersion = "2.6.8"
+  val latestApiVersion = "2.7.0"
 }
