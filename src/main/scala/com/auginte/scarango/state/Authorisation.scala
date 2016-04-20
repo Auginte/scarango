@@ -1,13 +1,13 @@
-package com.auginte.scarango.request.parts
+package com.auginte.scarango.state
 
-import spray.http.BasicHttpCredentials
-import spray.http.HttpHeaders.Authorization
+import akka.http.scaladsl.model.headers.{BasicHttpCredentials, RawHeader}
 
 /**
  * Wrapper for login
  */
 class Authorisation(val user: String, val password: String) {
-  def http = Authorization(BasicHttpCredentials(user, password))
+  lazy val http = BasicHttpCredentials(user, password)
+  lazy val header = RawHeader("Authorization", http.scheme() + " " + http.token())
 
   override def equals(other: Any): Boolean = other match {
     case that: Authorisation =>
@@ -31,5 +31,5 @@ class Authorisation(val user: String, val password: String) {
 object Authorisation {
   def default = new Authorisation("root", "")
 
-  def forUser(user: User) = new Authorisation(user.name, user.password)
+//  def forUser(user: User) = new Authorisation(user.name, user.password)
 }

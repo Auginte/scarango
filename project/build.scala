@@ -7,12 +7,11 @@ object build extends sbt.Build {
   val buildScalaVersion = "2.11.8"
   val buildOptions = Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
 
-  val akkaVersion = "2.3.12"
-  val sprayVersion = "1.3.3"
+  val akkaVersion = "2.4.4"
   val buildDependencies = Seq(
-    "com.typesafe.akka" % "akka-actor_2.11" % akkaVersion,
-    "io.spray" %% "spray-client" % sprayVersion,
-    "io.spray" %% "spray-json" % "1.3.2",
+    "com.typesafe.akka" %% "akka-http-core" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http-experimental" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http-spray-json-experimental" % akkaVersion,
     "com.auginte" %% "scarango-macros" % "0.2.2", // See scarango-macros folder
     "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test"
   )
