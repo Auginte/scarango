@@ -1,10 +1,9 @@
 package com.auginte.scarango.helpers
 
 import akka.actor._
-import akka.stream.{ActorMaterializer, ActorMaterializerSettings, Supervision}
-import com.auginte.scarango.Context
+import com.auginte.scarango.{Context, Scarango}
 import com.typesafe.config.ConfigFactory
-import org.scalatest.concurrent.{AsyncAssertions, ScalaFutures}
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Alerter, Informer, Notifier, WordSpec}
 
@@ -41,5 +40,11 @@ trait AkkaSpec extends WordSpec with ScalaFutures {
   override def note: Notifier = super.note
 
   override def alert: Alerter = super.alert
+
+  //
+  // Common functions
+  //
+
+  protected def withDriver(testCode: Scarango => Any): Unit = testCode(new Scarango(defaultConfig))
 }
 

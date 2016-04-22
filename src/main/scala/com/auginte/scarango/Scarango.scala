@@ -1,52 +1,29 @@
 package com.auginte.scarango
 
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
-import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl._
-import com.auginte.scarango.response.raw
-import spray.json._
 
-import scala.concurrent.Future
+import scala.concurrent.Await
 
 /**
-  * Wrapper ArrangoDB REST API.
+  * Wrapper for ArrangoDB REST API.
   */
-class Scarango(context: Context = Context.default) {
-  private val defaultPort = 8529
-
+class Scarango(val context: Context = Context.default) {
   implicit val system = context.actorSystem
   implicit val materializer = context.materializer
   implicit val executionContext = system.dispatcher
+  implicit val currentContext = context
 
-  val connectionFlow: Flow[HttpRequest, HttpResponse, Future[Http.OutgoingConnection]] = {
-    val (host, port) = context.endpoint.split(":") match {
-      case Array(h, p) => (h, p.toInt)
-      case Array(h) => (h, defaultPort)
-      case unknown => ("127.0.0.1", defaultPort)
-    }
-    Http(context.actorSystem).outgoingConnection(host, port, None)
+  object Flows {
+    val version = Source.single(request.getVersion)
+      .via(state.database)
+      .map (response.toVersion)
   }
 
-  trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-    implicit val versionFormat = jsonFormat2(raw.Version)
+  object Futures {
+    def version() = Flows.version.runWith(Sink.head).flatMap(same => same)
   }
 
-  object MyJsonProtocol extends JsonSupport
-
-  import MyJsonProtocol._
-
-  private val versionFlow = {
-    val request = HttpRequest(uri = "/_api/version", method = HttpMethods.GET, headers = List(context.authorisation.header))
-    Source.single(request)
-      .via(connectionFlow)
-      .map { request =>
-        Unmarshal(request.entity).to[raw.Version]
-      }
-  }
-
-  def version(): Future[raw.Version] = {
-    versionFlow.runWith(Sink.head).flatMap(inner => inner)
+  object Results {
+    def version() = Await.result(Futures.version(), context.waitTime)
   }
 }
