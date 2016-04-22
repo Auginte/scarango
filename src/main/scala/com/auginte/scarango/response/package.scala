@@ -29,6 +29,14 @@ package object response {
     Unmarshal(response.entity).to[raw.create.Collection]
   }
 
+  def toDocumentCreated(implicit context: Context): (HttpResponse) => Future[raw.create.Document] = { response =>
+    implicit val system = context.actorSystem
+    implicit val materializer = context.materializer
+    implicit val executionContext = system.dispatcher
+
+    Unmarshal(response.entity).to[raw.create.Document]
+  }
+
   def toRaw(implicit context: Context): (HttpResponse) => Future[String] = { response =>
     implicit val system = context.actorSystem
     implicit val materializer = context.materializer
