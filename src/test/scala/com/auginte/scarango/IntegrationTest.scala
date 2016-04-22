@@ -4,6 +4,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import com.auginte.scarango.common.{CollectionStatuses, CollectionTypes}
 import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.request.raw.create.{Collection, Document}
+import com.auginte.scarango.request.raw.query.simple.All
 
 /**
   * Testing integration with ArangoDB
@@ -82,7 +83,7 @@ class IntegrationTest extends AkkaSpec {
       assert(response.code === 200)
       assert(response.status === CollectionStatuses.Loaded)
     }
-    "create new document" in withDriver { scarango =>
+    "create new document and can fetch them" in withDriver { scarango =>
       val collectionName = "with-data" + randomId
       scarango.Results.create(Collection(collectionName))
       for (i <- 1 to 5) {
@@ -90,6 +91,13 @@ class IntegrationTest extends AkkaSpec {
         val response = scarango.Results.create(Document(rawData, collectionName))
         assert(response.error === false)
         assert(response._id === collectionName + "/" + response._key)
+      }
+      val response = scarango.Results.query(All(collectionName))
+      assert(response.result.size === 5)
+      for (document <- response.result) {
+        val id = document.fields("_id").toString().replace("\"", "")
+        val key = document.fields("_key").toString().replace("\"", "")
+        assert(id === collectionName + "/" + key)
       }
     }
   }

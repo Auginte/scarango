@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.HttpResponse
 import akka.stream.scaladsl._
 import akka.util.ByteString
 import com.auginte.scarango.request.raw.create.{Collection, Document}
+import com.auginte.scarango.request.raw.query.simple.All
 
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
@@ -40,6 +41,10 @@ class Scarango(val context: Context = Context.default) {
     def create(document: Document) = Source.single(request.create(document))
       .via(state.database)
       .map(response.toDocumentCreated)
+
+    def query(all: All) = Source.single(request.query(all))
+      .via(state.database)
+      .map(response.toSimpleQueryResult)
   }
 
   object Futures {
@@ -48,6 +53,8 @@ class Scarango(val context: Context = Context.default) {
     def create(collection: Collection) = Flows.create(collection).runWith(Sink.head).flatMap(lower)
 
     def create(document: Document) = Flows.create(document).runWith(Sink.head).flatMap(lower)
+
+    def query(all: All) = Flows.query(all).runWith(Sink.head).flatMap(lower)
   }
 
   object Results {
@@ -56,5 +63,7 @@ class Scarango(val context: Context = Context.default) {
     def create(collection: Collection) = Await.result(Futures.create(collection), context.waitTime)
 
     def create(document: Document) = Await.result(Futures.create(document), context.waitTime)
+
+    def query(all: All) = Await.result(Futures.query(all), context.waitTime)
   }
 }

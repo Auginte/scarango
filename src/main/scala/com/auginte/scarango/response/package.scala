@@ -37,6 +37,14 @@ package object response {
     Unmarshal(response.entity).to[raw.create.Document]
   }
 
+  def toSimpleQueryResult(implicit context: Context): (HttpResponse) => Future[raw.query.simple.All] = { response =>
+    implicit val system = context.actorSystem
+    implicit val materializer = context.materializer
+    implicit val executionContext = system.dispatcher
+
+    Unmarshal(response.entity).to[raw.query.simple.All]
+  }
+
   def toRaw(implicit context: Context): (HttpResponse) => Future[String] = { response =>
     implicit val system = context.actorSystem
     implicit val materializer = context.materializer
