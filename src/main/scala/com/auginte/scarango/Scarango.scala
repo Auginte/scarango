@@ -13,7 +13,7 @@ import scala.util.{Failure, Success}
 /**
   * Wrapper for ArrangoDB REST API.
   */
-class Scarango(val context: Context = Context.default) {
+case class Scarango(context: Context = Context.default) {
   implicit val system = context.actorSystem
   implicit val materializer = context.materializer
   implicit val executionContext = system.dispatcher
@@ -29,6 +29,8 @@ class Scarango(val context: Context = Context.default) {
     }
     response
   }
+
+  def withDatabase(newName: String) = copy(context = context.withDatabase(newName))
 
   object Flows {
     val version = Source.single(request.getVersion)
@@ -98,6 +100,6 @@ class Scarango(val context: Context = Context.default) {
     def iterator(all: All) =
       Await.result(Futures.iterator(all).flatMapConcat(Source.fromFuture).runWith(Sink.head).map(_.iterator), context.waitTime)
 
-    def remove(database: dl.Database) = Await.result(Futures.delete(database), context.waitTime)
+    def delete(database: dl.Database) = Await.result(Futures.delete(database), context.waitTime)
   }
 }

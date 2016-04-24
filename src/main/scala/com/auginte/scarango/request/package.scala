@@ -18,6 +18,10 @@ package object request {
   private val post = HttpMethods.POST
   private val put = HttpMethods.PUT
 
+  private def url(context: Context, path: String) =
+    if (context.database != Context.defaultDatabase) s"/_db/${context.database}$path"
+    else path
+
   def getVersion(implicit context: Context) = HttpRequest(get, "/_api/version", headers(context))
 
   def listDatabases(implicit context: Context) = HttpRequest(get, "/_api/database", headers(context))
@@ -26,7 +30,7 @@ package object request {
     HttpRequest(post, "/_api/database", headers(context), HttpEntities.create(database.toJson.compactPrint))
 
   def create(collection: Collection)(implicit context: Context) =
-    HttpRequest(post, "/_api/collection", headers(context), HttpEntities.create(collection.toJson.compactPrint))
+    HttpRequest(post, url(context, "/_api/collection"), headers(context), HttpEntities.create(collection.toJson.compactPrint))
 
   def create(document: Document)(implicit context: Context) =
     HttpRequest(post, s"/_api/document?collection=${document.collectionName}", headers(context), HttpEntities.create(document.rawData))

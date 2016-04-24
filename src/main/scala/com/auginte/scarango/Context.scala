@@ -8,33 +8,32 @@ import scala.concurrent.duration._
 /**
   * Parameters for Scarango driver
   */
-case class Context(endpoint: String = Context.defaultEndpoint, authorisation: Authorisation = Authorisation.default)
-                  (val actorSystem: ActorSystem, val materializer: Materializer, val waitTime: Duration)
+case class Context(
+                    endpoint: String = Context.defaultEndpoint,
+                    authorisation: Authorisation = Authorisation.default,
+                    database: String = Context.defaultDatabase
+                  )
+                  (val actorSystem: ActorSystem = Context.defaultActorSystem, val materializer: Materializer = Context.defaultMaterializer, val waitTime: Duration = Context.defaultWaitDuration) {
+
+  def withDatabase(newName: String) = copy(database = newName)(actorSystem, materializer, waitTime)
+}
 
 object Context {
   val defaultEndpoint = "127.0.0.1:8529"
+  val defaultDatabase = "_system"
+  val defaultWaitDuration = 4.seconds
 
-  private lazy val defaultSystem = ActorSystem("scarango")
+  private[scarango] lazy val defaultActorSystem = ActorSystem("scarango")
+  private[scarango] lazy val defaultMaterializer = ActorMaterializer()(defaultActorSystem)
 
-  lazy val stopOnError: Supervision.Decider = {
-    case some =>
-      println("Directive")
-      Supervision.Stop
-  }
-
-  val decider: Supervision.Decider = { e =>
-    println("Unhandled exception in stream", e)
-    Supervision.Stop
-  }
-
-  val default = fromActorSystem(defaultSystem)
+  val default = fromActorSystem(defaultActorSystem)
 
   def fromActorSystem(actorSystem: ActorSystem) = {
-    val materializerSettings = ActorMaterializerSettings(actorSystem).withSupervisionStrategy(decider)
+    val materializerSettings = ActorMaterializerSettings(actorSystem)
     new Context()(
       actorSystem,
       ActorMaterializer(materializerSettings)(actorSystem),
-      4.seconds
+      defaultWaitDuration
     )
   }
 }
