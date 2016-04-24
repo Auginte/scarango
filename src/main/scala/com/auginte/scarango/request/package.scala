@@ -26,6 +26,8 @@ package object request {
 
   def listDatabases(implicit context: Context) = HttpRequest(get, "/_api/database", headers(context))
 
+  def listCollections(implicit context: Context) = HttpRequest(get, url(context, "/_api/collection"), headers(context))
+
   def create(database: Database)(implicit context: Context) =
     HttpRequest(post, "/_api/database", headers(context), HttpEntities.create(database.toJson.compactPrint))
 

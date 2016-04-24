@@ -41,6 +41,10 @@ case class Scarango(context: Context = Context.default) {
       .via(state.database)
       .map (response.toDatabases)
 
+    val collections = Source.single(request.listCollections)
+      .via(state.database)
+      .map (response.toCollections)
+
     def create(collection: cr.Collection) = Source.single(request.create(collection))
       .via(state.database)
       .map(response.toCollectionCreated)
@@ -71,6 +75,8 @@ case class Scarango(context: Context = Context.default) {
 
     def listDatabases() = Flows.databases.runWith(Sink.head).flatMap(lower)
 
+    def listCollections() = Flows.collections.runWith(Sink.head).flatMap(lower)
+
     def create(database: cr.Database) = Flows.create(database).runWith(Sink.head).flatMap(lower)
 
     def create(collection: cr.Collection) = Flows.create(collection).runWith(Sink.head).flatMap(lower)
@@ -88,6 +94,8 @@ case class Scarango(context: Context = Context.default) {
     def version() = Await.result(Futures.version(), context.waitTime)
 
     def listDatabases() = Await.result(Futures.listDatabases(), context.waitTime)
+
+    def listCollections() = Await.result(Futures.listCollections(), context.waitTime)
 
     def create(database: cr.Database) = Await.result(Futures.create(database), context.waitTime)
 

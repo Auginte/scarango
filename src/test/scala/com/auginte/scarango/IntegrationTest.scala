@@ -6,6 +6,7 @@ import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.request.raw.{create => c}
 import com.auginte.scarango.request.raw.{delete => d}
 import com.auginte.scarango.request.raw.query.simple.All
+import com.auginte.scarango.response.raw.{list => rl}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -130,20 +131,21 @@ class IntegrationTest extends AkkaSpec {
         info(s"Databases: ${databases.result}")
       }
     }
-    "testing collections" should {
-      "be able to create new collection" in withDriver { scarango =>
-        val name = "collection" + randomId
-        info(s"Database: _system. Collection: $name")
-        val response = scarango.Results.create(c.Collection(name))
-        assert(response.name === name)
+    "testing collections" should withDriver { scarango =>
+      val contains = (list: List[rl.Collection], name: String) => list.count(_.name == name) == 1
+      val byName = (list: List[rl.Collection], name: String) => list.filter(_.name == name).head
+      val collectionName = "collection" + randomId
+      "be able to create new collection" in {
+        info(s"Database: _system. Collection: $collectionName")
+        val response = scarango.Results.create(c.Collection(collectionName))
+        assert(response.name === collectionName)
         assert(response.`type` === CollectionTypes.Document)
         assert(response.error === false)
         assert(response.code === HttpStatusCodes.ok)
         assert(response.status === CollectionStatuses.Loaded)
       }
-      "be able to create new collection in custom database" in withDriver { scarango =>
+      "be able to create new collection in custom database" in {
         val databaseName = "db" + randomId
-        val collectionName = "inside" + randomId
         info(s"Database: $databaseName. Collection: $collectionName")
         val dbCreated = scarango.Results.create(c.Database(databaseName))
         assert(dbCreated.result === true)
@@ -152,6 +154,42 @@ class IntegrationTest extends AkkaSpec {
         assert(collectionCreated.error === false)
         val dbRemoved = scarango.Results.delete(d.Database(databaseName))
         assert(dbRemoved.result === true)
+      }
+      "be able to see collections inside _system database" in {
+        val collections = scarango.Results.listCollections()
+        info(s"Database: _system. Collections: ${collections.collections}")
+        assert(collections.error === false)
+        assert(collections.code === HttpStatusCodes.ok)
+        assert(collections.collections.size > 1)
+        val createdCollection = byName(collections.collections, collectionName)
+        assert(createdCollection.id.length > 1)
+        assert(createdCollection.name === collectionName)
+        assert(createdCollection.isSystem === false)
+        assert(createdCollection.`type` === CollectionTypes.Document)
+        assert(createdCollection.status === CollectionStatuses.Loaded)
+        val usersCollection = byName(collections.collections, "_users")
+        assert(usersCollection.isSystem === true)
+        assert(contains(collections.collections, "_graphs"))
+        assert(contains(collections.collections, "_sessions"))
+      }
+      "be able to see collections in custom database" in {
+        val databaseName = "db" + randomId
+        scarango.Results.create(c.Database(databaseName))
+        val inCreatedDb = scarango.withDatabase(databaseName)
+        inCreatedDb.Results.create(c.Collection(collectionName))
+        val collections = inCreatedDb.Results.listCollections()
+        info(s"Database: $databaseName. Collections: ${collections.collections}")
+        assert(collections.error === false)
+        assert(collections.code === HttpStatusCodes.ok)
+        val createdCollection = byName(collections.collections, collectionName)
+        assert(createdCollection.id.length > 1)
+        assert(createdCollection.name === collectionName)
+        assert(createdCollection.isSystem === false)
+        assert(createdCollection.`type` === CollectionTypes.Document)
+        assert(createdCollection.status === CollectionStatuses.Loaded)
+        assert(contains(collections.collections, "_graphs"))
+        assert(contains(collections.collections, "_sessions"))
+        scarango.Results.delete(d.Database(databaseName))
       }
     }
     "testing documents" should withDriver { scarango =>
