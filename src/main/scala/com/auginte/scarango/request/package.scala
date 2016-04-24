@@ -20,6 +20,8 @@ package object request {
 
   def getVersion(implicit context: Context) = HttpRequest(get, "/_api/version", headers(context))
 
+  def listDatabases(implicit context: Context) = HttpRequest(get, "/_api/database", headers(context))
+
   def create(database: Database)(implicit context: Context) =
     HttpRequest(post, "/_api/database", headers(context), HttpEntities.create(database.toJson.compactPrint))
 

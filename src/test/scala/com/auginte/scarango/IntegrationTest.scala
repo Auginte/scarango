@@ -44,7 +44,7 @@ class IntegrationTest extends AkkaSpec {
       withDelay {
         Source.single(request.getVersion)
           .via(state.database)
-          .map (response.toVersion)
+          .map(response.toVersion)
           .runWith(Sink.head)
           .flatMap(same => same)
       } { raw =>
@@ -59,7 +59,7 @@ class IntegrationTest extends AkkaSpec {
       withDelay {
         Source.single(request.getVersion)
           .via(state.database)
-          .map (response.toRaw)
+          .map(response.toRaw)
           .runWith(Sink.head)
           .flatMap(same => same)
       } { raw =>
@@ -69,7 +69,7 @@ class IntegrationTest extends AkkaSpec {
   }
 
   "To interact with database like a streams" should {
-    "retrieve records in a asynchronous way" in withDriver { scarango =>
+    "retrieve records in a (simulated) asynchronous way" in withDriver { scarango =>
       val collectionName = "with-data" + randomId
       implicit val context = scarango.context
       implicit val materializer = context.materializer
@@ -92,46 +92,62 @@ class IntegrationTest extends AkkaSpec {
     }
   }
 
-  "To cover ArangoDB API" should {
-    "get version of ArangoDB" in withDriver { scarango =>
-      withDelay {
-        scarango.Futures.version()
-      } { raw =>
-        assert(raw.version === latestApiVersion)
-        assert(raw.server === "arango")
+  "To cover ArangoDB API" when {
+    "testing administration part" should {
+      "get version of ArangoDB" in withDriver { scarango =>
+        withDelay {
+          scarango.Futures.version()
+        } { raw =>
+          assert(raw.version === latestApiVersion)
+          assert(raw.server === "arango")
+        }
       }
     }
-    "create new database" in withDriver { scarango =>
+    "testing database" should withDriver { scarango =>
       val name = "db" + randomId
-      val response = scarango.Results.create(Database(name))
-      assert(response.result === true)
-      assert(response.error === false)
-      assert(response.code === HttpStatusCodes.created)
-    }
-    "create new collection" in withDriver { scarango =>
-      val name = "collection" + randomId
-      val response = scarango.Results.create(Collection(name))
-      assert(response.name === name)
-      assert(response.`type` === CollectionTypes.Document)
-      assert(response.error === false)
-      assert(response.code === HttpStatusCodes.ok)
-      assert(response.status === CollectionStatuses.Loaded)
-    }
-    "create new document and can fetch them" in withDriver { scarango =>
-      val collectionName = "with-data" + randomId
-      scarango.Results.create(Collection(collectionName))
-      for (i <- 1 to 5) {
-        val rawData = s"""{"Hello": $i}"""
-        val response = scarango.Results.create(Document(rawData, collectionName))
+      "be able to create new database" in {
+        val response = scarango.Results.create(Database(name))
+        assert(response.result === true)
         assert(response.error === false)
-        assert(response._id === collectionName + "/" + response._key)
+        assert(response.code === HttpStatusCodes.created)
       }
-      val response = scarango.Results.query(All(collectionName))
-      assert(response.result.size === 5)
-      for (document <- response.result) {
-        val id = document.id
-        val key = document.key
-        assert(id === collectionName + "/" + key)
+      "be able to list existing databases" in {
+        val databases = scarango.Results.listDatabases()
+        assert(databases.code === HttpStatusCodes.ok)
+        assert(databases.error === false)
+        assert(databases.result.contains(name))
+      }
+    }
+    "testing collections" should {
+      "be able to create new collection" in withDriver { scarango =>
+        val name = "collection" + randomId
+        val response = scarango.Results.create(Collection(name))
+        assert(response.name === name)
+        assert(response.`type` === CollectionTypes.Document)
+        assert(response.error === false)
+        assert(response.code === HttpStatusCodes.ok)
+        assert(response.status === CollectionStatuses.Loaded)
+      }
+    }
+    "testing documents" should withDriver { scarango =>
+      val collectionName = "with-data" + randomId
+      "be able to create new documents" in {
+        scarango.Results.create(Collection(collectionName))
+        for (i <- 1 to 5) {
+          val rawData = s"""{"Hello": $i}"""
+          val response = scarango.Results.create(Document(rawData, collectionName))
+          assert(response.error === false)
+          assert(response._id === collectionName + "/" + response._key)
+        }
+      }
+      "be able to list creted documents" in {
+        val response = scarango.Results.query(All(collectionName))
+        assert(response.result.size === 5)
+        for (document <- response.result) {
+          val id = document.id
+          val key = document.key
+          assert(id === collectionName + "/" + key)
+        }
       }
     }
   }

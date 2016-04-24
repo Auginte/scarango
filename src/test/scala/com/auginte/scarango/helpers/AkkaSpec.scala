@@ -5,6 +5,7 @@ import com.auginte.scarango.{Context, Scarango}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
+import org.scalatest.words.StringVerbBlockRegistration
 import org.scalatest.{Alerter, Informer, Notifier, WordSpec}
 
 import scala.concurrent.Future

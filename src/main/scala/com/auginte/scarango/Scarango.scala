@@ -34,6 +34,10 @@ class Scarango(val context: Context = Context.default) {
       .via(state.database)
       .map (response.toVersion)
 
+    val databases = Source.single(request.listDatabases)
+      .via(state.database)
+      .map (response.toDatabases)
+
     def create(collection: Collection) = Source.single(request.create(collection))
       .via(state.database)
       .map(response.toCollectionCreated)
@@ -58,6 +62,8 @@ class Scarango(val context: Context = Context.default) {
   object Futures {
     def version() = Flows.version.runWith(Sink.head).flatMap(lower)
 
+    def listDatabases() = Flows.databases.runWith(Sink.head).flatMap(lower)
+
     def create(database: Database) = Flows.create(database).runWith(Sink.head).flatMap(lower)
 
     def create(collection: Collection) = Flows.create(collection).runWith(Sink.head).flatMap(lower)
@@ -71,6 +77,8 @@ class Scarango(val context: Context = Context.default) {
 
   object Results {
     def version() = Await.result(Futures.version(), context.waitTime)
+
+    def listDatabases() = Await.result(Futures.listDatabases(), context.waitTime)
 
     def create(database: Database) = Await.result(Futures.create(database), context.waitTime)
 

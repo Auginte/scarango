@@ -62,6 +62,14 @@ package object response {
     Unmarshal(response.entity).to[raw.query.simple.All].map(_.result)
   }
 
+  def toDatabases(implicit context: Context): (HttpResponse) => Future[raw.list.Databases] = { response =>
+    implicit val system = context.actorSystem
+    implicit val materializer = context.materializer
+    implicit val executionContext = system.dispatcher
+
+    Unmarshal(response.entity).to[raw.list.Databases]
+  }
+
   def toRaw(implicit context: Context): (HttpResponse) => Future[String] = { response =>
     implicit val system = context.actorSystem
     implicit val materializer = context.materializer
