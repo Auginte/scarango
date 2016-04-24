@@ -3,7 +3,7 @@ package com.auginte.scarango
 import akka.http.scaladsl.model.HttpResponse
 import akka.stream.scaladsl._
 import akka.util.ByteString
-import com.auginte.scarango.request.raw.create.{Collection, Document}
+import com.auginte.scarango.request.raw.create.{Collection, Database, Document}
 import com.auginte.scarango.request.raw.query.simple.All
 
 import scala.concurrent.{Await, Future}
@@ -38,6 +38,10 @@ class Scarango(val context: Context = Context.default) {
       .via(state.database)
       .map(response.toCollectionCreated)
 
+    def create(database: Database) = Source.single(request.create(database))
+      .via(state.database)
+      .map(response.toDatabaseCreated)
+
     def create(document: Document) = Source.single(request.create(document))
       .via(state.database)
       .map(response.toDocumentCreated)
@@ -54,6 +58,8 @@ class Scarango(val context: Context = Context.default) {
   object Futures {
     def version() = Flows.version.runWith(Sink.head).flatMap(lower)
 
+    def create(database: Database) = Flows.create(database).runWith(Sink.head).flatMap(lower)
+
     def create(collection: Collection) = Flows.create(collection).runWith(Sink.head).flatMap(lower)
 
     def create(document: Document) = Flows.create(document).runWith(Sink.head).flatMap(lower)
@@ -65,6 +71,8 @@ class Scarango(val context: Context = Context.default) {
 
   object Results {
     def version() = Await.result(Futures.version(), context.waitTime)
+
+    def create(database: Database) = Await.result(Futures.create(database), context.waitTime)
 
     def create(collection: Collection) = Await.result(Futures.create(collection), context.waitTime)
 

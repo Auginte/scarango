@@ -48,5 +48,10 @@ trait AkkaSpec extends WordSpec with ScalaFutures {
   protected def withDriver(testCode: Scarango => Any): Unit = testCode(new Scarango(defaultConfig))
 
   protected def randomId = "-" + System.currentTimeMillis + "-" + scala.util.Random.nextInt(9999)
+
+  object HttpStatusCodes {
+    val ok = 200
+    val created = 201
+  }
 }
 

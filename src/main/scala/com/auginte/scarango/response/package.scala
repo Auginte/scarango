@@ -21,6 +21,15 @@ package object response {
     Unmarshal(response.entity).to[raw.Version]
   }
 
+  def toDatabaseCreated(implicit context: Context): (HttpResponse) => Future[raw.create.Database] = { response =>
+    implicit val system = context.actorSystem
+    implicit val materializer = context.materializer
+    implicit val executionContext = system.dispatcher
+
+    println(response.headers)
+    Unmarshal(response.entity).to[raw.create.Database]
+  }
+
   def toCollectionCreated(implicit context: Context): (HttpResponse) => Future[raw.create.Collection] = { response =>
     implicit val system = context.actorSystem
     implicit val materializer = context.materializer

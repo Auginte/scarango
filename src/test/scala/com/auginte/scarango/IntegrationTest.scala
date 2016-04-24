@@ -3,7 +3,7 @@ package com.auginte.scarango
 import akka.stream.scaladsl.{Sink, Source}
 import com.auginte.scarango.common.{CollectionStatuses, CollectionTypes}
 import com.auginte.scarango.helpers.AkkaSpec
-import com.auginte.scarango.request.raw.create.{Collection, Document}
+import com.auginte.scarango.request.raw.create.{Collection, Database, Document}
 import com.auginte.scarango.request.raw.query.simple.All
 
 import scala.concurrent.Await
@@ -101,13 +101,20 @@ class IntegrationTest extends AkkaSpec {
         assert(raw.server === "arango")
       }
     }
+    "create new database" in withDriver { scarango =>
+      val name = "db" + randomId
+      val response = scarango.Results.create(Database(name))
+      assert(response.result === true)
+      assert(response.error === false)
+      assert(response.code === HttpStatusCodes.created)
+    }
     "create new collection" in withDriver { scarango =>
       val name = "collection" + randomId
       val response = scarango.Results.create(Collection(name))
       assert(response.name === name)
       assert(response.`type` === CollectionTypes.Document)
       assert(response.error === false)
-      assert(response.code === 200)
+      assert(response.code === HttpStatusCodes.ok)
       assert(response.status === CollectionStatuses.Loaded)
     }
     "create new document and can fetch them" in withDriver { scarango =>
