@@ -26,7 +26,6 @@ package object response {
     implicit val materializer = context.materializer
     implicit val executionContext = system.dispatcher
 
-    println(response.headers)
     Unmarshal(response.entity).to[raw.create.Database]
   }
 
@@ -68,6 +67,14 @@ package object response {
     implicit val executionContext = system.dispatcher
 
     Unmarshal(response.entity).to[raw.list.Databases]
+  }
+
+  def toDatabaseDeleted(implicit context: Context): (HttpResponse) => Future[raw.delete.Database] = { response =>
+    implicit val system = context.actorSystem
+    implicit val materializer = context.materializer
+    implicit val executionContext = system.dispatcher
+
+    Unmarshal(response.entity).to[raw.delete.Database]
   }
 
   def toRaw(implicit context: Context): (HttpResponse) => Future[String] = { response =>

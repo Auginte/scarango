@@ -2,15 +2,14 @@ package com.auginte.scarango.request
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import com.auginte.scarango.common
-import com.auginte.scarango.request.raw.create.{Collection, Database, Document}
-import com.auginte.scarango.request.raw.query.simple.All
 import spray.json._
 
 trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   private object CommonJsonSupplier extends common.JsonSupport
   import CommonJsonSupplier._
 
-  implicit val createCollectionFormat = jsonFormat2(Collection)
-  implicit val createDatabaseFormat = jsonFormat1(Database)
-  implicit val querySimpleAllFormat = jsonFormat3(All)
+  implicit val createCollectionFormat = jsonFormat2(raw.create.Collection)
+  implicit val createDatabaseFormat = jsonFormat1(raw.create.Database)
+  implicit val querySimpleAllFormat = jsonFormat3(raw.query.simple.All)
+  implicit val deleteDatabaseFormat = jsonFormat1(raw.delete.Database)
 }

@@ -33,4 +33,7 @@ package object request {
 
   def query(all: All)(implicit context: Context) =
     HttpRequest(put, "/_api/simple/all", headers(context), HttpEntities.create(all.toJson.compactPrint))
+
+  def delete(database: raw.delete.Database)(implicit context: Context) =
+    HttpRequest(HttpMethods.DELETE, s"/_api/database/${database.name}", headers(context))
 }

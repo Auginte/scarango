@@ -25,4 +25,5 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   implicit val createDocumentFormat = jsonFormat4(raw.create.Document)
   implicit val querySimpleAllFormat = jsonFormat4(raw.query.simple.All)
   implicit val listDatabasesFormat = jsonFormat3(raw.list.Databases)
+  implicit val deleteDatabasesFormat = jsonFormat3(raw.delete.Database)
 }

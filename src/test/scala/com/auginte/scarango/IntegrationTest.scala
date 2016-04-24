@@ -3,8 +3,10 @@ package com.auginte.scarango
 import akka.stream.scaladsl.{Sink, Source}
 import com.auginte.scarango.common.{CollectionStatuses, CollectionTypes}
 import com.auginte.scarango.helpers.AkkaSpec
-import com.auginte.scarango.request.raw.create.{Collection, Database, Document}
+import com.auginte.scarango.request.raw.create
+import com.auginte.scarango.request.raw.delete
 import com.auginte.scarango.request.raw.query.simple.All
+import com.auginte.scarango.response.raw.{create => rc}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -73,10 +75,10 @@ class IntegrationTest extends AkkaSpec {
       val collectionName = "with-data" + randomId
       implicit val context = scarango.context
       implicit val materializer = context.materializer
-      scarango.Results.create(Collection(collectionName))
+      scarango.Results.create(create.Collection(collectionName))
       for (i <- 1 to 20) {
         val rawData = s"""{"Hello": $i}"""
-        scarango.Results.create(Document(rawData, collectionName))
+        scarango.Results.create(create.Document(rawData, collectionName))
       }
 
       val getAll = All(collectionName)
@@ -106,7 +108,7 @@ class IntegrationTest extends AkkaSpec {
     "testing database" should withDriver { scarango =>
       val name = "db" + randomId
       "be able to create new database" in {
-        val response = scarango.Results.create(Database(name))
+        val response = scarango.Results.create(create.Database(name))
         assert(response.result === true)
         assert(response.error === false)
         assert(response.code === HttpStatusCodes.created)
@@ -117,11 +119,19 @@ class IntegrationTest extends AkkaSpec {
         assert(databases.error === false)
         assert(databases.result.contains(name))
       }
+      "be able to remove database" in {
+        val response = scarango.Results.remove(delete.Database(name))
+        assert(response.result === true)
+        assert(response.error === false)
+        assert(response.code === HttpStatusCodes.ok)
+        val databases = scarango.Results.listDatabases()
+        assert(databases.result.contains(name) === false)
+      }
     }
     "testing collections" should {
       "be able to create new collection" in withDriver { scarango =>
         val name = "collection" + randomId
-        val response = scarango.Results.create(Collection(name))
+        val response = scarango.Results.create(create.Collection(name))
         assert(response.name === name)
         assert(response.`type` === CollectionTypes.Document)
         assert(response.error === false)
@@ -132,10 +142,10 @@ class IntegrationTest extends AkkaSpec {
     "testing documents" should withDriver { scarango =>
       val collectionName = "with-data" + randomId
       "be able to create new documents" in {
-        scarango.Results.create(Collection(collectionName))
+        scarango.Results.create(create.Collection(collectionName))
         for (i <- 1 to 5) {
           val rawData = s"""{"Hello": $i}"""
-          val response = scarango.Results.create(Document(rawData, collectionName))
+          val response = scarango.Results.create(create.Document(rawData, collectionName))
           assert(response.error === false)
           assert(response._id === collectionName + "/" + response._key)
         }

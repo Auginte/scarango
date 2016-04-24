@@ -3,7 +3,8 @@ package com.auginte.scarango
 import akka.http.scaladsl.model.HttpResponse
 import akka.stream.scaladsl._
 import akka.util.ByteString
-import com.auginte.scarango.request.raw.create.{Collection, Database, Document}
+import com.auginte.scarango.request.raw.{create => cr}
+import com.auginte.scarango.request.raw.{delete => dl}
 import com.auginte.scarango.request.raw.query.simple.All
 
 import scala.concurrent.{Await, Future}
@@ -38,15 +39,15 @@ class Scarango(val context: Context = Context.default) {
       .via(state.database)
       .map (response.toDatabases)
 
-    def create(collection: Collection) = Source.single(request.create(collection))
+    def create(collection: cr.Collection) = Source.single(request.create(collection))
       .via(state.database)
       .map(response.toCollectionCreated)
 
-    def create(database: Database) = Source.single(request.create(database))
+    def create(database: cr.Database) = Source.single(request.create(database))
       .via(state.database)
       .map(response.toDatabaseCreated)
 
-    def create(document: Document) = Source.single(request.create(document))
+    def create(document: cr.Document) = Source.single(request.create(document))
       .via(state.database)
       .map(response.toDocumentCreated)
 
@@ -57,6 +58,10 @@ class Scarango(val context: Context = Context.default) {
     def iterator(all: All) = Source.single(request.query(all))
       .via(state.database)
       .map(response.toDocumentIterator)
+
+    def delete(database: dl.Database) = Source.single(request.delete(database))
+      .via(state.database)
+      .map(response.toDatabaseDeleted)
   }
 
   object Futures {
@@ -64,15 +69,17 @@ class Scarango(val context: Context = Context.default) {
 
     def listDatabases() = Flows.databases.runWith(Sink.head).flatMap(lower)
 
-    def create(database: Database) = Flows.create(database).runWith(Sink.head).flatMap(lower)
+    def create(database: cr.Database) = Flows.create(database).runWith(Sink.head).flatMap(lower)
 
-    def create(collection: Collection) = Flows.create(collection).runWith(Sink.head).flatMap(lower)
+    def create(collection: cr.Collection) = Flows.create(collection).runWith(Sink.head).flatMap(lower)
 
-    def create(document: Document) = Flows.create(document).runWith(Sink.head).flatMap(lower)
+    def create(document: cr.Document) = Flows.create(document).runWith(Sink.head).flatMap(lower)
 
     def query(all: All) = Flows.query(all).runWith(Sink.head).flatMap(lower)
 
     def iterator(all: All) = Flows.iterator(all)
+
+    def delete(database: dl.Database) = Flows.delete(database).runWith(Sink.head).flatMap(lower)
   }
 
   object Results {
@@ -80,15 +87,17 @@ class Scarango(val context: Context = Context.default) {
 
     def listDatabases() = Await.result(Futures.listDatabases(), context.waitTime)
 
-    def create(database: Database) = Await.result(Futures.create(database), context.waitTime)
+    def create(database: cr.Database) = Await.result(Futures.create(database), context.waitTime)
 
-    def create(collection: Collection) = Await.result(Futures.create(collection), context.waitTime)
+    def create(collection: cr.Collection) = Await.result(Futures.create(collection), context.waitTime)
 
-    def create(document: Document) = Await.result(Futures.create(document), context.waitTime)
+    def create(document: cr.Document) = Await.result(Futures.create(document), context.waitTime)
 
     def query(all: All) = Await.result(Futures.query(all), context.waitTime)
 
     def iterator(all: All) =
       Await.result(Futures.iterator(all).flatMapConcat(Source.fromFuture).runWith(Sink.head).map(_.iterator), context.waitTime)
+
+    def remove(database: dl.Database) = Await.result(Futures.delete(database), context.waitTime)
   }
 }
