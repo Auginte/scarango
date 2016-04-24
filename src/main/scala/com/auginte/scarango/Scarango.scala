@@ -45,6 +45,10 @@ class Scarango(val context: Context = Context.default) {
     def query(all: All) = Source.single(request.query(all))
       .via(state.database)
       .map(response.toSimpleQueryResult)
+
+    def iterator(all: All) = Source.single(request.query(all))
+      .via(state.database)
+      .map(response.toDocumentIterator)
   }
 
   object Futures {
@@ -55,6 +59,8 @@ class Scarango(val context: Context = Context.default) {
     def create(document: Document) = Flows.create(document).runWith(Sink.head).flatMap(lower)
 
     def query(all: All) = Flows.query(all).runWith(Sink.head).flatMap(lower)
+
+    def iterator(all: All) = Flows.iterator(all)
   }
 
   object Results {
@@ -65,5 +71,8 @@ class Scarango(val context: Context = Context.default) {
     def create(document: Document) = Await.result(Futures.create(document), context.waitTime)
 
     def query(all: All) = Await.result(Futures.query(all), context.waitTime)
+
+    def iterator(all: All) =
+      Await.result(Futures.iterator(all).flatMapConcat(Source.fromFuture).runWith(Sink.head).map(_.iterator), context.waitTime)
   }
 }

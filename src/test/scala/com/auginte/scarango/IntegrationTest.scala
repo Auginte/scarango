@@ -6,6 +6,9 @@ import com.auginte.scarango.helpers.AkkaSpec
 import com.auginte.scarango.request.raw.create.{Collection, Document}
 import com.auginte.scarango.request.raw.query.simple.All
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
 /**
   * Testing integration with ArangoDB
   */
@@ -65,6 +68,30 @@ class IntegrationTest extends AkkaSpec {
     }
   }
 
+  "To interact with database like a streams" should {
+    "retrieve records in a asynchronous way" in withDriver { scarango =>
+      val collectionName = "with-data" + randomId
+      implicit val context = scarango.context
+      implicit val materializer = context.materializer
+      scarango.Results.create(Collection(collectionName))
+      for (i <- 1 to 20) {
+        val rawData = s"""{"Hello": $i}"""
+        scarango.Results.create(Document(rawData, collectionName))
+      }
+
+      val getAll = All(collectionName)
+      val graph = scarango.Flows.query(getAll)
+        .map(_.map(_.result))
+        .flatMapConcat(Source.fromFuture)
+        .expand(_.iterator)
+      val resultViaIterator = Await.result(graph.map(_.prettyPrint).runReduce(_ + _), 4.seconds)
+      val resultOfWhole = scarango.Results.query(getAll).result.map(_.prettyPrint).mkString("")
+      val resultIterator = scarango.Results.iterator(getAll).map(_.prettyPrint).toList.mkString("")
+      assert(resultViaIterator === resultOfWhole)
+      assert(resultViaIterator === resultIterator)
+    }
+  }
+
   "To cover ArangoDB API" should {
     "get version of ArangoDB" in withDriver { scarango =>
       withDelay {
@@ -95,8 +122,8 @@ class IntegrationTest extends AkkaSpec {
       val response = scarango.Results.query(All(collectionName))
       assert(response.result.size === 5)
       for (document <- response.result) {
-        val id = document.fields("_id").toString().replace("\"", "")
-        val key = document.fields("_key").toString().replace("\"", "")
+        val id = document.id
+        val key = document.key
         assert(id === collectionName + "/" + key)
       }
     }

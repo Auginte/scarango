@@ -45,6 +45,14 @@ package object response {
     Unmarshal(response.entity).to[raw.query.simple.All]
   }
 
+  def toDocumentIterator(implicit context: Context): (HttpResponse) => Future[List[raw.query.simple.Document]] = { response =>
+    implicit val system = context.actorSystem
+    implicit val materializer = context.materializer
+    implicit val executionContext = system.dispatcher
+
+    Unmarshal(response.entity).to[raw.query.simple.All].map(_.result)
+  }
+
   def toRaw(implicit context: Context): (HttpResponse) => Future[String] = { response =>
     implicit val system = context.actorSystem
     implicit val materializer = context.materializer
