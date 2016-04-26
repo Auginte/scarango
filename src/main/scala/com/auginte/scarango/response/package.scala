@@ -60,6 +60,11 @@ package object response {
     Unmarshal(response.entity).to[raw.delete.Database]
   }
 
+  def toCollectionDeleted(implicit context: Context): (HttpResponse) => Future[raw.delete.Collection] = { response =>
+    implicit val (s, m, e) = implicits(context)
+    Unmarshal(response.entity).to[raw.delete.Collection]
+  }
+
   def toRaw(implicit context: Context): (HttpResponse) => Future[String] = { response =>
     implicit val (s, m, e) = implicits(context)
     response.entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)

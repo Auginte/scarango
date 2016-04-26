@@ -14,11 +14,11 @@ Stability
 
 **This is early version**. Functionality:
 
-* ~~Database: Create, List, Remove, ~~by user~~, with user data~~ 
-* ~~Collection: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
-* ~~Document: Create, List, Read, ~~Update~~, Remove, ~~Test~~
-* ~~Query, Cursor, Explain~~
-* ~~Graph, edge, edges~~~
+* Database: Create, ~~List~~, Remove, ~~by user, with user data~~ 
+* Collection: Create, List, ~~Read (status, type, properties, count, statistics)~~, Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
+* Document: Create, ~~List~~, ~~Read~~, ~~Update~~, ~~Remove~~, ~~Test~~
+* Query, ~~Cursor, Explain~~ Simple
+* ~~Graph, edge, edges~~
 * ~~Batch, Index~~
 * ~~Export, replicate~~
 * Version, ~~WAL, System, Tasks, Log~~
@@ -58,17 +58,19 @@ Why another driver
 
 This client/driver concentrates on faster/easier development of
 
-* Akka/spray based applications
+* Reactive streams/non-blocking oriented applications
 * Graph intensive applications
 
 *Development still in progress*
 
-Architecture concepts
----------------------
+Older versions
+--------------
 
-* Interacting with ArangoDB via Scarango Actor (reuse open HTTP connection)
-* All operations/actor messages grouped into requests, response and error packages
-* Use strong types for names of Databases and Collections, so currently used names be given implicitly 
+[v0.2.4](https://github.com/Auginte/scarango/tree/v0.2.4) was last version,
+that was based on Spray 1.x version.
+
+All later versions are based on Akka Http (Spray 2.x)
+and are **not** back compatible with Spray 1.x
 
 Similar projects
 ----------------

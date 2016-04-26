@@ -135,14 +135,18 @@ class IntegrationTest extends AkkaSpec {
       val contains = (list: List[rl.Collection], name: String) => list.count(_.name == name) == 1
       val byName = (list: List[rl.Collection], name: String) => list.filter(_.name == name).head
       val collectionName = "collection" + randomId
-      "be able to create new collection" in {
+      "be able to create and remove new collection" in {
         info(s"Database: _system. Collection: $collectionName")
-        val response = scarango.Results.create(c.Collection(collectionName))
-        assert(response.name === collectionName)
-        assert(response.`type` === CollectionTypes.Document)
-        assert(response.error === false)
-        assert(response.code === HttpStatusCodes.ok)
-        assert(response.status === CollectionStatuses.Loaded)
+        val createResponse = scarango.Results.create(c.Collection(collectionName))
+        assert(createResponse.name === collectionName)
+        assert(createResponse.`type` === CollectionTypes.Document)
+        assert(createResponse.error === false)
+        assert(createResponse.code === HttpStatusCodes.ok)
+        assert(createResponse.status === CollectionStatuses.Loaded)
+        val collectionRemoved = scarango.Results.delete(d.Collection(collectionName))
+        assert(collectionRemoved.id.length > 1)
+        assert(collectionRemoved.error === false)
+        assert(collectionRemoved.code === HttpStatusCodes.ok)
       }
       "be able to create new collection in custom database" in {
         val databaseName = "db" + randomId
@@ -156,6 +160,7 @@ class IntegrationTest extends AkkaSpec {
         assert(dbRemoved.result === true)
       }
       "be able to see collections inside _system database" in {
+        scarango.Results.create(c.Collection(collectionName))
         val collections = scarango.Results.listCollections()
         info(s"Database: _system. Collections: ${collections.collections}")
         assert(collections.error === false)
@@ -171,6 +176,7 @@ class IntegrationTest extends AkkaSpec {
         assert(usersCollection.isSystem === true)
         assert(contains(collections.collections, "_graphs"))
         assert(contains(collections.collections, "_sessions"))
+        scarango.Results.delete(d.Collection(collectionName))
       }
       "be able to see collections in custom database" in {
         val databaseName = "db" + randomId

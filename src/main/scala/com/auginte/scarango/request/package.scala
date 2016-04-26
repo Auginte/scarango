@@ -42,4 +42,7 @@ package object request {
 
   def delete(database: raw.delete.Database)(implicit context: Context) =
     HttpRequest(HttpMethods.DELETE, s"/_api/database/${database.name}", headers(context))
+
+  def delete(collection: raw.delete.Collection)(implicit context: Context) =
+    HttpRequest(HttpMethods.DELETE, url(context, s"/_api/collection/${collection.name}"), headers(context))
 }
