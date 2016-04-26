@@ -75,22 +75,25 @@ class IntegrationTest extends AkkaSpec {
       val collectionName = "with-data" + randomId
       implicit val context = scarango.context
       implicit val materializer = context.materializer
-      scarango.Results.create(c.Collection(collectionName))
-      for (i <- 1 to 20) {
-        val rawData = s"""{"Hello": $i}"""
-        scarango.Results.create(c.Document(rawData, collectionName))
+      part("Creating new elments") {
+        scarango.Results.create(c.Collection(collectionName))
+        for (i <- 1 to 20) {
+          val rawData = s"""{"Hello": $i}"""
+          scarango.Results.create(c.Document(rawData, collectionName))
+        }
       }
-
-      val getAll = All(collectionName)
-      val graph = scarango.Flows.query(getAll)
-        .map(_.map(_.result))
-        .flatMapConcat(Source.fromFuture)
-        .expand(_.iterator)
-      val resultViaIterator = Await.result(graph.map(_.prettyPrint).runReduce(_ + _), 4.seconds)
-      val resultOfWhole = scarango.Results.query(getAll).result.map(_.prettyPrint).mkString("")
-      val resultIterator = scarango.Results.iterator(getAll).map(_.prettyPrint).toList.mkString("")
-      assert(resultViaIterator === resultOfWhole)
-      assert(resultViaIterator === resultIterator)
+      part("Retrieving stored elements") {
+        val getAll = All(collectionName)
+        val graph = scarango.Flows.query(getAll)
+          .map(_.map(_.result))
+          .flatMapConcat(Source.fromFuture)
+          .expand(_.iterator)
+        val resultViaIterator = Await.result(graph.map(_.prettyPrint).runReduce(_ + _), 4.seconds)
+        val resultOfWhole = scarango.Results.query(getAll).result.map(_.prettyPrint).mkString("")
+        val resultIterator = scarango.Results.iterator(getAll).map(_.prettyPrint).toList.mkString("")
+        assert(resultViaIterator === resultOfWhole)
+        assert(resultViaIterator === resultIterator)
+      }
     }
   }
 
@@ -106,118 +109,210 @@ class IntegrationTest extends AkkaSpec {
       }
     }
     "testing database" should withDriver { scarango =>
-      val name = "db" + randomId
-      "be able to create new database" in {
-        info(s"Database: $name")
-        val response = scarango.Results.create(c.Database(name))
-        assert(response.result === true)
-        assert(response.error === false)
-        assert(response.code === HttpStatusCodes.created)
+      "be able to create and remove new database" in {
+        val name = "db" + randomId
+        part("Creating new database") {
+          context(s"New database: $name")
+          val response = scarango.Results.create(c.Database(name))
+          assert(response.result === true)
+          assert(response.error === false)
+          assert(response.code === HttpStatusCodes.created)
+        }
+        part("Removing database") {
+          val response = scarango.Results.delete(d.Database(name))
+          assert(response.result === true)
+          assert(response.error === false)
+          assert(response.code === HttpStatusCodes.ok)
+        }
+        part("Checking in existing databases") {
+          val databases = scarango.Results.listDatabases()
+          assert(databases.result.contains(name) === false)
+          context(s"Databases after removal: ${databases.result}")
+        }
       }
       "be able to list existing databases" in {
-        val databases = scarango.Results.listDatabases()
-        assert(databases.code === HttpStatusCodes.ok)
-        assert(databases.error === false)
-        assert(databases.result.contains(name))
-        info(s"Databases: ${databases.result}")
-      }
-      "be able to remove database" in {
-        val response = scarango.Results.delete(d.Database(name))
-        assert(response.result === true)
-        assert(response.error === false)
-        assert(response.code === HttpStatusCodes.ok)
-        val databases = scarango.Results.listDatabases()
-        assert(databases.result.contains(name) === false)
-        info(s"Databases: ${databases.result}")
+        val name = "db" + randomId
+        part("Creating database") {
+          scarango.Results.create(c.Database(name))
+          context(s"New database: $name")
+        }
+        part("Listing databases") {
+          val databases = scarango.Results.listDatabases()
+          assert(databases.code === HttpStatusCodes.ok)
+          assert(databases.error === false)
+          assert(databases.result.contains(name))
+          context(s"Databases: ${databases.result}")
+        }
+        part("Removing database") {
+          scarango.Results.delete(d.Database(name))
+          context(s"Database removed: $name")
+        }
       }
     }
     "testing collections" should withDriver { scarango =>
-      val contains = (list: List[rl.Collection], name: String) => list.count(_.name == name) == 1
-      val byName = (list: List[rl.Collection], name: String) => list.filter(_.name == name).head
-      val collectionName = "collection" + randomId
       "be able to create and remove new collection" in {
-        info(s"Database: _system. Collection: $collectionName")
-        val createResponse = scarango.Results.create(c.Collection(collectionName))
-        assert(createResponse.name === collectionName)
-        assert(createResponse.`type` === CollectionTypes.Document)
-        assert(createResponse.error === false)
-        assert(createResponse.code === HttpStatusCodes.ok)
-        assert(createResponse.status === CollectionStatuses.Loaded)
-        val collectionRemoved = scarango.Results.delete(d.Collection(collectionName))
-        assert(collectionRemoved.id.length > 1)
-        assert(collectionRemoved.error === false)
-        assert(collectionRemoved.code === HttpStatusCodes.ok)
+        val collectionName = "collection" + randomId
+        part("Creating new collection") {
+          context(s"New collection: $collectionName in _system")
+          val createResponse = scarango.Results.create(c.Collection(collectionName))
+          assert(createResponse.name === collectionName)
+          assert(createResponse.`type` === CollectionTypes.Document)
+          assert(createResponse.error === false)
+          assert(createResponse.code === HttpStatusCodes.ok)
+          assert(createResponse.status === CollectionStatuses.Loaded)
+        }
+        part("Removing collection") {
+          val collectionRemoved = scarango.Results.delete(d.Collection(collectionName))
+          assert(collectionRemoved.id.length > 1)
+          assert(collectionRemoved.error === false)
+          assert(collectionRemoved.code === HttpStatusCodes.ok)
+          context(s"Removed collection: $collectionName in _system")
+        }
       }
       "be able to create new collection in custom database" in {
         val databaseName = "db" + randomId
-        info(s"Database: $databaseName. Collection: $collectionName")
-        val dbCreated = scarango.Results.create(c.Database(databaseName))
-        assert(dbCreated.result === true)
-        val inCreatedDb = scarango.withDatabase(databaseName)
-        val collectionCreated = inCreatedDb.Results.create(c.Collection(collectionName))
-        assert(collectionCreated.error === false)
-        val dbRemoved = scarango.Results.delete(d.Database(databaseName))
-        assert(dbRemoved.result === true)
+        val collectionName = "collection" + randomId
+        part("Creating database") {
+          val dbCreated = scarango.Results.create(c.Database(databaseName))
+          assert(dbCreated.result === true)
+          context(s"New database: $databaseName")
+        }
+        part("Creating collection") {
+          val inCreatedDb = scarango.withDatabase(databaseName)
+          val collectionCreated = inCreatedDb.Results.create(c.Collection(collectionName))
+          assert(collectionCreated.error === false)
+          context(s"New collection: $collectionName in $databaseName")
+        }
+        part("Removing database") {
+          val dbRemoved = scarango.Results.delete(d.Database(databaseName))
+          assert(dbRemoved.result === true)
+          context(s"Database removed: $databaseName")
+        }
       }
       "be able to see collections inside _system database" in {
-        scarango.Results.create(c.Collection(collectionName))
-        val collections = scarango.Results.listCollections()
-        info(s"Database: _system. Collections: ${collections.collections}")
-        assert(collections.error === false)
-        assert(collections.code === HttpStatusCodes.ok)
-        assert(collections.collections.size > 1)
-        val createdCollection = byName(collections.collections, collectionName)
-        assert(createdCollection.id.length > 1)
-        assert(createdCollection.name === collectionName)
-        assert(createdCollection.isSystem === false)
-        assert(createdCollection.`type` === CollectionTypes.Document)
-        assert(createdCollection.status === CollectionStatuses.Loaded)
-        val usersCollection = byName(collections.collections, "_users")
-        assert(usersCollection.isSystem === true)
-        assert(contains(collections.collections, "_graphs"))
-        assert(contains(collections.collections, "_sessions"))
-        scarango.Results.delete(d.Collection(collectionName))
+        val collectionName = "collection" + randomId
+        part("Creating new collection") {
+          scarango.Results.create(c.Collection(collectionName))
+          context(s"New collection: $collectionName in _system")
+        }
+        part("Listing existing collections") {
+          val collections = scarango.Results.listCollections()
+          sub("Comparing basic response") {
+            assert(collections.error === false)
+            assert(collections.code === HttpStatusCodes.ok)
+            assert(collections.collections.size > 1)
+            context(s"Collections: ${collections.collections.map(_.name)}")
+          }
+          sub("Comparing newly created collection") {
+            val createdCollection = byName(collections.collections, collectionName)
+            assert(createdCollection.id.length > 1)
+            assert(createdCollection.name === collectionName)
+            assert(createdCollection.isSystem === false)
+            assert(createdCollection.`type` === CollectionTypes.Document)
+            assert(createdCollection.status === CollectionStatuses.Loaded)
+          }
+          sub("Comparing system collections") {
+            val usersCollection = byName(collections.collections, "_users")
+            assert(usersCollection.isSystem === true)
+            assert(contains(collections.collections, "_graphs"))
+            assert(contains(collections.collections, "_sessions"))
+          }
+        }
+        part("Removing collection") {
+          scarango.Results.delete(d.Collection(collectionName))
+          val collectionsLeft = scarango.Results.listCollections()
+          assert(contains(collectionsLeft.collections, collectionName) === false, "collection removed")
+          context(s"Collections after removal: ${collectionsLeft.collections.map(_.name)}")
+        }
       }
       "be able to see collections in custom database" in {
         val databaseName = "db" + randomId
-        scarango.Results.create(c.Database(databaseName))
-        val inCreatedDb = scarango.withDatabase(databaseName)
-        inCreatedDb.Results.create(c.Collection(collectionName))
-        val collections = inCreatedDb.Results.listCollections()
-        info(s"Database: $databaseName. Collections: ${collections.collections}")
-        assert(collections.error === false)
-        assert(collections.code === HttpStatusCodes.ok)
-        val createdCollection = byName(collections.collections, collectionName)
-        assert(createdCollection.id.length > 1)
-        assert(createdCollection.name === collectionName)
-        assert(createdCollection.isSystem === false)
-        assert(createdCollection.`type` === CollectionTypes.Document)
-        assert(createdCollection.status === CollectionStatuses.Loaded)
-        assert(contains(collections.collections, "_graphs"))
-        assert(contains(collections.collections, "_sessions"))
-        scarango.Results.delete(d.Database(databaseName))
+        val collectionName = "collection" + randomId
+        part("Creating new database") {
+          scarango.Results.create(c.Database(databaseName))
+          context(s"New database: $databaseName")
+        }
+        part("In newly created database") {
+          val inCreatedDb = scarango.withDatabase(databaseName)
+          sub("Creating new collection") {
+            inCreatedDb.Results.create(c.Collection(collectionName))
+            context(s"New collection: $collectionName in $databaseName")
+          }
+          val collections = commented("Listing collections") {
+            inCreatedDb.Results.listCollections()
+          }
+          sub("Comparing basic response from the list of database collections") {
+            assert(collections.error === false)
+            assert(collections.code === HttpStatusCodes.ok)
+          }
+          sub("Comparing newly created collection") {
+            val createdCollection = byName(collections.collections, collectionName)
+            assert(createdCollection.id.length > 1)
+            assert(createdCollection.name === collectionName)
+            assert(createdCollection.isSystem === false)
+            assert(createdCollection.`type` === CollectionTypes.Document)
+            assert(createdCollection.status === CollectionStatuses.Loaded)
+          }
+          sub("Comparing system collections") {
+            assert(contains(collections.collections, "_graphs"))
+            assert(contains(collections.collections, "_sessions"))
+          }
+        }
+        part("Removing database") {
+          val dbRemoved = scarango.Results.delete(d.Database(databaseName))
+          assert(dbRemoved.result === true)
+          context(s"Database removed: $databaseName")
+        }
       }
     }
     "testing documents" should withDriver { scarango =>
-      val collectionName = "with-data" + randomId
-      "be able to create new documents" in {
-        info(s"Database: _system. Collection: $collectionName")
-        scarango.Results.create(c.Collection(collectionName))
-        for (i <- 1 to 5) {
-          val rawData = s"""{"Hello": $i}"""
-          val response = scarango.Results.create(c.Document(rawData, collectionName))
-          assert(response.error === false)
-          assert(response._id === collectionName + "/" + response._key)
+      "be able to create and list new documents" in {
+        val collectionName = "with-data" + randomId
+        part("Creating collection") {
+          scarango.Results.create(c.Collection(collectionName))
+          context(s"New collection: $collectionName in _system")
+        }
+        part("Creating new documents") {
+          for (i <- 1 to 5) {
+            val rawData = s"""{"Hello": $i}"""
+            val response = scarango.Results.create(c.Document(rawData, collectionName))
+            assert(response.error === false)
+            assert(response._id === collectionName + "/" + response._key)
+          }
+        }
+        part("Listing new documents") {
+          val response = scarango.Results.query(All(collectionName))
+          assert(response.result.size === 5)
+          for (document <- response.result) {
+            val id = document.id
+            val key = document.key
+            assert(id === collectionName + "/" + key)
+          }
+          context(s"Documents (ids only): ${response.result.map(_.id)}")
+        }
+        part("Removing collection") {
+          scarango.Results.delete(d.Collection(collectionName))
+          context(s"Collection removed: $collectionName")
         }
       }
-      "be able to list created documents" in {
-        val response = scarango.Results.query(All(collectionName))
-        info(s"Database: _system. Collection: $collectionName Documents: ${response.result.map(_.id)}")
-        assert(response.result.size === 5)
-        for (document <- response.result) {
-          val id = document.id
-          val key = document.key
-          assert(id === collectionName + "/" + key)
+      "be able to create and remove new documents" in {
+        val collectionName = "with-data" + randomId
+        part("Creating collection") {
+          scarango.Results.create(c.Collection(collectionName))
+          context(s"New collection: $collectionName in _system")
+        }
+        val newDocument = commented("Creating new document") {
+          val rawData = s"""{"Hello": "New"}"""
+          scarango.Results.create(c.Document(rawData, collectionName))
+        }
+        part("Removing newly created document") {
+          val deleted = scarango.Results.delete(d.Document(collectionName, newDocument._key))
+          assert(deleted.error === false)
+          assert(deleted._id === collectionName + "/" + deleted._key)
+        }
+        part("Removing collection") {
+          scarango.Results.delete(d.Collection(collectionName))
+          context(s"Collection removed: $collectionName")
         }
       }
     }

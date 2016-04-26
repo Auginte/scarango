@@ -16,7 +16,7 @@ Stability
 
 * Database: Create, ~~List~~, Remove, ~~by user, with user data~~ 
 * Collection: Create, List, ~~Read (status, type, properties, count, statistics)~~, Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
-* Document: Create, ~~List~~, ~~Read~~, ~~Update~~, ~~Remove~~, ~~Test~~
+* Document: Create, List, ~~Read~~, ~~Update~~, Remove, ~~Test~~
 * Query, ~~Cursor, Explain~~ Simple
 * ~~Graph, edge, edges~~
 * ~~Batch, Index~~

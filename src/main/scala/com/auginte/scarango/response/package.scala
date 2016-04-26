@@ -4,7 +4,8 @@ import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.util.ByteString
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success}
 
 /**
   * Converting responses from ArangoDB to Wrapped objects
@@ -63,6 +64,11 @@ package object response {
   def toCollectionDeleted(implicit context: Context): (HttpResponse) => Future[raw.delete.Collection] = { response =>
     implicit val (s, m, e) = implicits(context)
     Unmarshal(response.entity).to[raw.delete.Collection]
+  }
+
+  def toDocumentDeleted(implicit context: Context): (HttpResponse) => Future[raw.delete.Document] = { response =>
+    implicit val (s, m, e) = implicits(context)
+    Unmarshal(response.entity).to[raw.delete.Document]
   }
 
   def toRaw(implicit context: Context): (HttpResponse) => Future[String] = { response =>

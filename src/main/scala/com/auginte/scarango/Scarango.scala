@@ -72,6 +72,10 @@ case class Scarango(context: Context = Context.default) {
     def delete(collection: dl.Collection) = Source.single(request.delete(collection))
       .via(state.database)
       .map(response.toCollectionDeleted)
+
+    def delete(document: dl.Document) = Source.single(request.delete(document))
+      .via(state.database)
+      .map(response.toDocumentDeleted)
   }
 
   object Futures {
@@ -94,6 +98,8 @@ case class Scarango(context: Context = Context.default) {
     def delete(database: dl.Database) = Flows.delete(database).runWith(Sink.head).flatMap(lower)
 
     def delete(collection: dl.Collection) = Flows.delete(collection).runWith(Sink.head).flatMap(lower)
+
+    def delete(document: dl.Document) = Flows.delete(document).runWith(Sink.head).flatMap(lower)
   }
 
   object Results {
@@ -117,5 +123,7 @@ case class Scarango(context: Context = Context.default) {
     def delete(database: dl.Database) = Await.result(Futures.delete(database), context.waitTime)
 
     def delete(collection: dl.Collection) = Await.result(Futures.delete(collection), context.waitTime)
+
+    def delete(document: dl.Document) = Await.result(Futures.delete(document), context.waitTime)
   }
 }
