@@ -3,7 +3,7 @@ package com.auginte.scarango.helpers
 import akka.actor._
 import com.auginte.scarango.response.raw
 import com.auginte.scarango.response.raw.query.simple.Document
-import com.auginte.scarango.{Context, Scarango}
+import com.auginte.scarango._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -63,7 +63,11 @@ trait AkkaSpec extends WordSpec with ScalaFutures {
   // Common functions
   //
 
-  protected def withDriver(testCode: Scarango => Any): Unit = testCode(new Scarango(defaultConfig))
+  protected def withDriver(testCode: ScarangoAwait => Any): Unit = testCode(Scarango.newAwait(defaultConfig))
+
+  protected def withFuturesDriver(testCode: ScarangoFutures => Any): Unit = testCode(Scarango.newFutures(defaultConfig))
+
+  protected def withStreamsDriver(testCode: ScarangoStreams => Any): Unit = testCode(Scarango.newStreams(defaultConfig))
 
   protected def randomId = "-" + System.currentTimeMillis + "-" + scala.util.Random.nextInt(9999)
 

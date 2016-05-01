@@ -17,11 +17,11 @@ import scala.concurrent.duration._
 class IntegrationTest extends AkkaSpec {
   "To be easy to use Scarango driver in various abstraction levels" should {
     "have one-liner for final result (blocking is acceptable)" in withDriver { scarango =>
-      assert(scarango.Results.version().version === latestApiVersion)
+      assert(scarango.version().version === latestApiVersion)
     }
-    "have future for common situations" in withDriver { scarango =>
+    "have future for common situations" in withFuturesDriver { scarango =>
       withDelay {
-        scarango.Futures.version()
+        scarango.version()
       } { raw =>
         assert(raw.version === latestApiVersion)
         assert(raw.server === "arango")
@@ -31,9 +31,9 @@ class IntegrationTest extends AkkaSpec {
       val context = defaultConfig
       implicit val system = context.actorSystem
       implicit val materializer = context.materializer
-      val scarango = new Scarango(context)
+      val scarango = Scarango.newStreams(context)
       withDelay {
-        scarango.Flows.version.runWith(Sink.head).flatMap(same => same)
+        scarango.version.runWith(Sink.head).flatMap(same => same)
       } { raw =>
         assert(raw.version === latestApiVersion)
         assert(raw.server === "arango")
@@ -68,29 +68,43 @@ class IntegrationTest extends AkkaSpec {
         assert(raw === s"""{"server":"arango","version":"$latestApiVersion"}""")
       }
     }
+    "can easily switch between abstraction levels" in {
+      val databaseName1 = "one"
+      val databaseName2 = "two"
+      val databaseName3 = "three"
+      val streamDriver: ScarangoStreams = Scarango.newStreams().withDatabase(databaseName1)
+      val futuresDriver: ScarangoFutures = Scarango.newFutures().withDatabase(databaseName1)
+      val awaitDriver: ScarangoAwait = Scarango.newAwait().withDatabase(databaseName1)
+      assert(streamDriver.context.database === futuresDriver.context.database)
+      assert(streamDriver.context.database === awaitDriver.context.database)
+      assert(databaseName2 === streamDriver.withDatabase(databaseName2).toFutures.toAwait.context.database)
+      assert(databaseName2 === awaitDriver.withDatabase(databaseName2).toFutures.toStreams.context.database)
+      assert(databaseName3 === futuresDriver.withDatabase(databaseName3).toStreams.context.database)
+      assert(databaseName3 === futuresDriver.withDatabase(databaseName3).toAwait.context.database)
+    }
   }
 
   "To interact with database like a streams" should {
-    "retrieve records in a (simulated) asynchronous way" in withDriver { scarango =>
+    "retrieve records in a (simulated) asynchronous way" in withStreamsDriver { scarango =>
       val collectionName = "with-data" + randomId
       implicit val context = scarango.context
       implicit val materializer = context.materializer
-      part("Creating new elments") {
-        scarango.Results.create(c.Collection(collectionName))
+      part("Creating new elements") {
+        scarango.toAwait.create(c.Collection(collectionName))
         for (i <- 1 to 20) {
           val rawData = s"""{"Hello": $i}"""
-          scarango.Results.create(c.Document(rawData, collectionName))
+          scarango.toAwait.create(c.Document(rawData, collectionName))
         }
       }
       part("Retrieving stored elements") {
         val getAll = All(collectionName)
-        val graph = scarango.Flows.query(getAll)
+        val graph = scarango.query(getAll)
           .map(_.map(_.result))
           .flatMapConcat(Source.fromFuture)
           .expand(_.iterator)
         val resultViaIterator = Await.result(graph.map(_.prettyPrint).runReduce(_ + _), 4.seconds)
-        val resultOfWhole = scarango.Results.query(getAll).result.map(_.prettyPrint).mkString("")
-        val resultIterator = scarango.Results.iterator(getAll).map(_.prettyPrint).toList.mkString("")
+        val resultOfWhole = scarango.toAwait.query(getAll).result.map(_.prettyPrint).mkString("")
+        val resultIterator = scarango.toAwait.iterator(getAll).map(_.prettyPrint).toList.mkString("")
         assert(resultViaIterator === resultOfWhole)
         assert(resultViaIterator === resultIterator)
       }
@@ -99,9 +113,9 @@ class IntegrationTest extends AkkaSpec {
 
   "To cover ArangoDB API" when {
     "testing administration part" should {
-      "get version of ArangoDB" in withDriver { scarango =>
+      "get version of ArangoDB" in withFuturesDriver { scarango =>
         withDelay {
-          scarango.Futures.version()
+          scarango.version()
         } { raw =>
           assert(raw.version === latestApiVersion)
           assert(raw.server === "arango")
@@ -113,19 +127,19 @@ class IntegrationTest extends AkkaSpec {
         val name = "db" + randomId
         part("Creating new database") {
           context(s"New database: $name")
-          val response = scarango.Results.create(c.Database(name))
+          val response = scarango.create(c.Database(name))
           assert(response.result === true)
           assert(response.error === false)
           assert(response.code === HttpStatusCodes.created)
         }
         part("Removing database") {
-          val response = scarango.Results.delete(d.Database(name))
+          val response = scarango.delete(d.Database(name))
           assert(response.result === true)
           assert(response.error === false)
           assert(response.code === HttpStatusCodes.ok)
         }
         part("Checking in existing databases") {
-          val databases = scarango.Results.listDatabases()
+          val databases = scarango.listDatabases()
           assert(databases.result.contains(name) === false)
           context(s"Databases after removal: ${databases.result}")
         }
@@ -133,18 +147,18 @@ class IntegrationTest extends AkkaSpec {
       "be able to list existing databases" in {
         val name = "db" + randomId
         part("Creating database") {
-          scarango.Results.create(c.Database(name))
+          scarango.create(c.Database(name))
           context(s"New database: $name")
         }
         part("Listing databases") {
-          val databases = scarango.Results.listDatabases()
+          val databases = scarango.listDatabases()
           assert(databases.code === HttpStatusCodes.ok)
           assert(databases.error === false)
           assert(databases.result.contains(name))
           context(s"Databases: ${databases.result}")
         }
         part("Removing database") {
-          scarango.Results.delete(d.Database(name))
+          scarango.delete(d.Database(name))
           context(s"Database removed: $name")
         }
       }
@@ -154,7 +168,7 @@ class IntegrationTest extends AkkaSpec {
         val collectionName = "collection" + randomId
         part("Creating new collection") {
           context(s"New collection: $collectionName in _system")
-          val createResponse = scarango.Results.create(c.Collection(collectionName))
+          val createResponse = scarango.create(c.Collection(collectionName))
           assert(createResponse.name === collectionName)
           assert(createResponse.`type` === CollectionTypes.Document)
           assert(createResponse.error === false)
@@ -162,7 +176,7 @@ class IntegrationTest extends AkkaSpec {
           assert(createResponse.status === CollectionStatuses.Loaded)
         }
         part("Removing collection") {
-          val collectionRemoved = scarango.Results.delete(d.Collection(collectionName))
+          val collectionRemoved = scarango.delete(d.Collection(collectionName))
           assert(collectionRemoved.id.length > 1)
           assert(collectionRemoved.error === false)
           assert(collectionRemoved.code === HttpStatusCodes.ok)
@@ -173,18 +187,18 @@ class IntegrationTest extends AkkaSpec {
         val databaseName = "db" + randomId
         val collectionName = "collection" + randomId
         part("Creating database") {
-          val dbCreated = scarango.Results.create(c.Database(databaseName))
+          val dbCreated = scarango.create(c.Database(databaseName))
           assert(dbCreated.result === true)
           context(s"New database: $databaseName")
         }
         part("Creating collection") {
           val inCreatedDb = scarango.withDatabase(databaseName)
-          val collectionCreated = inCreatedDb.Results.create(c.Collection(collectionName))
+          val collectionCreated = inCreatedDb.create(c.Collection(collectionName))
           assert(collectionCreated.error === false)
           context(s"New collection: $collectionName in $databaseName")
         }
         part("Removing database") {
-          val dbRemoved = scarango.Results.delete(d.Database(databaseName))
+          val dbRemoved = scarango.delete(d.Database(databaseName))
           assert(dbRemoved.result === true)
           context(s"Database removed: $databaseName")
         }
@@ -192,11 +206,11 @@ class IntegrationTest extends AkkaSpec {
       "be able to see collections inside _system database" in {
         val collectionName = "collection" + randomId
         part("Creating new collection") {
-          scarango.Results.create(c.Collection(collectionName))
+          scarango.create(c.Collection(collectionName))
           context(s"New collection: $collectionName in _system")
         }
         part("Listing existing collections") {
-          val collections = scarango.Results.listCollections()
+          val collections = scarango.listCollections()
           sub("Comparing basic response") {
             assert(collections.error === false)
             assert(collections.code === HttpStatusCodes.ok)
@@ -219,8 +233,8 @@ class IntegrationTest extends AkkaSpec {
           }
         }
         part("Removing collection") {
-          scarango.Results.delete(d.Collection(collectionName))
-          val collectionsLeft = scarango.Results.listCollections()
+          scarango.delete(d.Collection(collectionName))
+          val collectionsLeft = scarango.listCollections()
           assert(contains(collectionsLeft.collections, collectionName) === false, "collection removed")
           context(s"Collections after removal: ${collectionsLeft.collections.map(_.name)}")
         }
@@ -229,17 +243,17 @@ class IntegrationTest extends AkkaSpec {
         val databaseName = "db" + randomId
         val collectionName = "collection" + randomId
         part("Creating new database") {
-          scarango.Results.create(c.Database(databaseName))
+          scarango.create(c.Database(databaseName))
           context(s"New database: $databaseName")
         }
         part("In newly created database") {
           val inCreatedDb = scarango.withDatabase(databaseName)
           sub("Creating new collection") {
-            inCreatedDb.Results.create(c.Collection(collectionName))
+            inCreatedDb.create(c.Collection(collectionName))
             context(s"New collection: $collectionName in $databaseName")
           }
           val collections = subCommented("Listing collections") {
-            inCreatedDb.Results.listCollections()
+            inCreatedDb.listCollections()
           }
           sub("Comparing basic response from the list of database collections") {
             assert(collections.error === false)
@@ -259,7 +273,7 @@ class IntegrationTest extends AkkaSpec {
           }
         }
         part("Removing database") {
-          val dbRemoved = scarango.Results.delete(d.Database(databaseName))
+          val dbRemoved = scarango.delete(d.Database(databaseName))
           assert(dbRemoved.result === true)
           context(s"Database removed: $databaseName")
         }
@@ -269,19 +283,19 @@ class IntegrationTest extends AkkaSpec {
       "be able to create and list new documents" in {
         val collectionName = "with-data" + randomId
         part("Creating collection") {
-          scarango.Results.create(c.Collection(collectionName))
+          scarango.create(c.Collection(collectionName))
           context(s"New collection: $collectionName in _system")
         }
         part("Creating new documents") {
           for (i <- 1 to 5) {
             val rawData = s"""{"Hello": $i}"""
-            val response = scarango.Results.create(c.Document(rawData, collectionName))
+            val response = scarango.create(c.Document(rawData, collectionName))
             assert(response.error === false)
             assert(response._id === collectionName + "/" + response._key)
           }
         }
         part("Listing new documents") {
-          val response = scarango.Results.query(All(collectionName))
+          val response = scarango.query(All(collectionName))
           assert(response.result.size === 5)
           for (document <- response.result) {
             val id = document.id
@@ -291,23 +305,23 @@ class IntegrationTest extends AkkaSpec {
           context(s"Documents (ids only): ${response.result.map(_.id)}")
         }
         part("Removing collection") {
-          scarango.Results.delete(d.Collection(collectionName))
+          scarango.delete(d.Collection(collectionName))
           context(s"Collection removed: $collectionName")
         }
       }
       "be able to create and remove new documents" in {
         val collectionName = "with-data" + randomId
         part("Creating collection") {
-          scarango.Results.create(c.Collection(collectionName))
+          scarango.create(c.Collection(collectionName))
           context(s"New collection: $collectionName in _system")
         }
         val newDocument = commented("Creating new document") {
           val rawData = s"""{"Hello": "New"}"""
-          scarango.Results.create(c.Document(rawData, collectionName))
+          scarango.create(c.Document(rawData, collectionName))
         }
         context(s"New document created: ${newDocument._id}")
         part("Reading document by key") {
-          val document = scarango.Results.get(g.Document(collectionName, newDocument._key))
+          val document = scarango.get(g.Document(collectionName, newDocument._key))
           assert(newDocument._key === document.key)
           assert(rqs.Document.jsToString(document.fields("Hello")) === "New")
           assert(document.compactPrint === s"""{"Hello":"New","_id":"${document.id}","_rev":"${document.revision}","_key":"${document.key}"}""")
@@ -323,12 +337,12 @@ class IntegrationTest extends AkkaSpec {
           }
         }
         part("Removing newly created document") {
-          val deleted = scarango.Results.delete(d.Document(collectionName, newDocument._key))
+          val deleted = scarango.delete(d.Document(collectionName, newDocument._key))
           assert(deleted.error === false)
           assert(deleted._id === collectionName + "/" + deleted._key)
         }
         part("Removing collection") {
-          scarango.Results.delete(d.Collection(collectionName))
+          scarango.delete(d.Collection(collectionName))
           context(s"Collection removed: $collectionName")
         }
       }
@@ -343,7 +357,7 @@ class IntegrationTest extends AkkaSpec {
       val databaseName = "prod-like" + randomId
       val database = commented("Create database with user credentials") {
         context(s"New database: $databaseName")
-        scarango.Results.create(c.Database(databaseName, List(webApp, backdoor)))
+        scarango.create(c.Database(databaseName, List(webApp, backdoor)))
       }
       part("Testing database creation response") {
         assert(database.code === HttpStatusCodes.created)
@@ -351,14 +365,14 @@ class IntegrationTest extends AkkaSpec {
         assert(database.result === true)
       }
       part("New database should not be visible to default user") {
-        val databases = scarango.Results.listDatabases()
+        val databases = scarango.listDatabases()
         assert(databases.result.contains(databaseName))
       }
       val asWebApp = scarango.withDatabase(databaseName).withUser(webApp)
       part("Connecting with webApp user and listing collections"){
-        val collections = asWebApp.Results.listCollections()
+        val collections = asWebApp.listCollections()
         assert(contains(collections.collections, "_users") === true)
-        val users = asWebApp.Results.query(All("_users"))
+        val users = asWebApp.query(All("_users"))
         assert(users.result.size === 2)
         val backDoorUser = users.result.filter(o => userField(o) == backdoor.username).head
         val webAppUser = users.result.filter(o => userField(o) == webApp.username).head
@@ -369,26 +383,26 @@ class IntegrationTest extends AkkaSpec {
       part("Not allowed to connect with backDoor user, which is not active") {
         context("Assuming disable-authentication=false")
         intercept[Exception] {
-          asBackDoor.Results.listCollections()
+          asBackDoor.listCollections()
         }
       }
       val asOther = scarango.withDatabase(databaseName).withUser(other)
       part("Not allowed to connect with other user") {
         context("Assuming disable-authentication=false")
         intercept[Exception] {
-          asOther.Results.listCollections()
+          asOther.listCollections()
         }
       }
       val asRoot = scarango.withDatabase(databaseName)
       part("Not allowed to connect with root") {
         context("Assuming disable-authentication=false")
         intercept[Exception] {
-          asRoot.Results.listCollections()
+          asRoot.listCollections()
         }
       }
 
       part("Removing database") {
-        scarango.Results.delete(d.Database(databaseName))
+        scarango.delete(d.Database(databaseName))
         context(s"Database removed: $databaseName")
       }
     }

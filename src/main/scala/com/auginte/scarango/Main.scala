@@ -13,8 +13,8 @@ object Main extends App {
   val context = Context.default
   implicit val executionContext = context.actorSystem.dispatcher
 
-  val scarango = new Scarango(context)
-  val version = scarango.Futures.version()
+  val scarango = Scarango.newFutures(context)
+  val version = scarango.version()
   version.onComplete {
     case Success(v) =>
       println(s"Arango db version: ${v.version}")
