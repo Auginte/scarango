@@ -2,11 +2,13 @@ package com.auginte.scarango.helpers
 
 import akka.actor._
 import com.auginte.scarango.response.raw
+import com.auginte.scarango.response.raw.query.simple.Document
 import com.auginte.scarango.{Context, Scarango}
 import com.typesafe.config.ConfigFactory
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Alerter, Informer, Notifier, WordSpec}
+import spray.json.{JsObject, JsValue}
 
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -67,6 +69,7 @@ trait AkkaSpec extends WordSpec with ScalaFutures {
 
   val contains = (list: List[raw.list.Collection], name: String) => list.count(_.name == name) == 1
   val byName = (list: List[raw.list.Collection], name: String) => list.filter(_.name == name).head
+  val userField = (o: JsObject) => o.fields("user").toString(Document.js2String)
 
   object HttpStatusCodes {
     val ok = 200

@@ -2,7 +2,9 @@ package com.auginte.scarango
 
 import akka.actor.ActorSystem
 import akka.stream._
+import com.auginte.scarango.request.raw.create.User
 import com.auginte.scarango.state.Authorisation
+
 import scala.concurrent.duration._
 
 /**
@@ -15,7 +17,11 @@ case class Context(
                   )
                   (val actorSystem: ActorSystem = Context.defaultActorSystem, val materializer: Materializer = Context.defaultMaterializer, val waitTime: Duration = Context.defaultWaitDuration) {
 
-  def withDatabase(newName: String) = copy(database = newName)(actorSystem, materializer, waitTime)
+  private def curryCopy(partial: (ActorSystem, Materializer, Duration) => Context): Context = partial(actorSystem, materializer, waitTime)
+
+  def withDatabase(newName: String) = curryCopy(copy(database = newName))
+
+  def withAuthorisation(user: User) = curryCopy(copy(authorisation = Authorisation.forUser(user)))
 }
 
 object Context {

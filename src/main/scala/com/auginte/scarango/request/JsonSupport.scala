@@ -9,9 +9,11 @@ trait JsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
   import CommonJsonSupplier._
 
   implicit val createCollectionFormat = jsonFormat2(raw.create.Collection)
-  implicit val createDatabaseFormat = jsonFormat1(raw.create.Database)
+  implicit val createDatabaseUserFormat = jsonFormat4(raw.create.User)
+  implicit val createDatabaseFormat = jsonFormat2(raw.create.Database)
   implicit val querySimpleAllFormat = jsonFormat3(raw.query.simple.All)
   implicit val getDocumentFormat = jsonFormat2(raw.get.Document)
+  implicit val reokaceDocumentFormat = jsonFormat3(raw.replace.Document)
   implicit val deleteDatabaseFormat = jsonFormat1(raw.delete.Database)
   implicit val deleteDocumentFormat = jsonFormat2(raw.delete.Document)
 }

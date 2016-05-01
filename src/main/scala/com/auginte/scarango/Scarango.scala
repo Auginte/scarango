@@ -3,6 +3,7 @@ package com.auginte.scarango
 import akka.http.scaladsl.model.HttpResponse
 import akka.stream.scaladsl._
 import akka.util.ByteString
+import com.auginte.scarango.request.raw.create.User
 import com.auginte.scarango.request.raw.{create => cr}
 import com.auginte.scarango.request.raw.{delete => dl}
 import com.auginte.scarango.request.raw.{get => gt}
@@ -32,6 +33,8 @@ case class Scarango(context: Context = Context.default) {
   }
 
   def withDatabase(newName: String) = copy(context = context.withDatabase(newName))
+
+  def withUser(user: User) = copy(context = context.withAuthorisation(user))
 
   object Flows {
     val version = Source.single(request.getVersion)

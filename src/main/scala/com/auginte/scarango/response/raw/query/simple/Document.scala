@@ -14,7 +14,9 @@ class Document(fields: Map[String, JsValue]) extends JsObject(fields) {
 }
 
 object Document {
-  def jsToString(value: JsValue): String = value match {
+  def jsToString(value: JsValue): String = js2String(value)
+
+  def js2String: JsValue => String = {
     case JsString(s) => s
     case other => other.toString
   }

@@ -1,11 +1,11 @@
 Just another Scala driver for ArangoDB
 ======================================
 
-[![Build Status](https://secure.travis-ci.org/Auginte/scarango.png?branch=master)](http://travis-ci.org/Auginte/scarango)
+[![Build Status](https://api.travis-ci.org/Auginte/scarango.png?branch=reactive-streams-%231)](http://travis-ci.org/Auginte/scarango)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.auginte/scarango_2.11/badge.svg)](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.4|)
 
 Reactive streams based Scala driver/client for ArangoDB.
-This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and Akka streams.
+This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and Akka streams and spray JSON.
 
 Stability
 ---------
@@ -14,14 +14,24 @@ Stability
 
 **This is early version**. Functionality:
 
-* Database: Create, ~~List~~, Remove, ~~by user, with user data~~ 
-* Collection: Create, List, ~~Read (status, type, properties, count, statistics)~~, Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
-* Document: Create, List, ~~Read~~, ~~Update~~, Remove, ~~Test~~
-* Query, ~~Cursor, Explain~~ Simple
-* ~~Graph, edge, edges~~
-* ~~Batch, Index~~
-* ~~Export, replicate~~
-* Version, ~~WAL, System, Tasks, Log~~
+ * Administration: version, ~~statistics~~, ~~tasks~~, ~~etc~~
+ * AQL: ~~CRUD~~, ~~etc~~
+ * Bulk: ~~exectute~~, ~~import~~, ~~export~~, ~~etc~~
+ * Cluster: ~~CRUD~~, ~~etc~~ 
+ * Collections: Create, List, ~~Get~~, ~~Update~~, Delete, ~~etc~~ 
+ * Cursors: ~~Create~~, ~~Delete~~, ~~Read~~
+ * Database: Create (with users), List, ~~Get~~, Delete
+ * Documents: Create, Get, ~~List~~, Replace, ~~Patch~~, Delete, ~~etc~~  
+ * Graph: ~~CRUD~~, ~~etc~~ 
+ * Graph edges: ~~CRUD~~, ~~etc~~ 
+ * Graph Traversal: ~~Exectute~~ 
+ * Indexes: ~~Create(SkipList, CapacityConstrain, Fulltext, General, Geo, Hash), Read, Get, Delete~~  
+ * Job: ~~List, Get, etc~~ 
+ * Replication: ~~CRUD~~, ~~etc~~
+ * Simple Queries: Get(All, ~~any~~, ~~byExample~~, ~~etc~~), ~~Remove~~, ~~Update~~ 
+ * Transactions: ~~Execute~~ 
+ * User handling: ~~Create, List, Fetch, Replace, Remove~~ 
+ * Write ahead log: ~~Get, Update Flush~~  
 
 Usage
 -----
@@ -70,7 +80,7 @@ Older versions
 that was based on Spray 1.x version.
 
 All later versions are based on Akka Http (Spray 2.x)
-and are **not** back compatible with Spray 1.x
+and are **not** back-compatible with Spray 1.x
 
 Similar projects
 ----------------

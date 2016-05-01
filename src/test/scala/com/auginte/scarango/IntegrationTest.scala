@@ -334,4 +334,63 @@ class IntegrationTest extends AkkaSpec {
       }
     }
   }
+
+  "To be suitable for production" should {
+    "restrict database to specific user" in withDriver { scarango =>
+      val webApp = c.User("webapp", "cyFAP7iwCPy8gh3WZHHG", active = true)
+      val backdoor = c.User("backdoor", "123456", active = false)
+      val other = c.User("other", "11111111", active = true)
+      val databaseName = "prod-like" + randomId
+      val database = commented("Create database with user credentials") {
+        context(s"New database: $databaseName")
+        scarango.Results.create(c.Database(databaseName, List(webApp, backdoor)))
+      }
+      part("Testing database creation response") {
+        assert(database.code === HttpStatusCodes.created)
+        assert(database.error === false)
+        assert(database.result === true)
+      }
+      part("New database should not be visible to default user") {
+        val databases = scarango.Results.listDatabases()
+        assert(databases.result.contains(databaseName))
+      }
+      val asWebApp = scarango.withDatabase(databaseName).withUser(webApp)
+      part("Connecting with webApp user and listing collections"){
+        val collections = asWebApp.Results.listCollections()
+        assert(contains(collections.collections, "_users") === true)
+        val users = asWebApp.Results.query(All("_users"))
+        assert(users.result.size === 2)
+        val backDoorUser = users.result.filter(o => userField(o) == backdoor.username).head
+        val webAppUser = users.result.filter(o => userField(o) == webApp.username).head
+        context(s"User data: $backDoorUser")
+        context(s"User data: $webAppUser")
+      }
+      val asBackDoor = scarango.withDatabase(databaseName).withUser(backdoor)
+      part("Not allowed to connect with backDoor user, which is not active") {
+        context("Assuming disable-authentication=false")
+        intercept[Exception] {
+          asBackDoor.Results.listCollections()
+        }
+      }
+      val asOther = scarango.withDatabase(databaseName).withUser(other)
+      part("Not allowed to connect with other user") {
+        context("Assuming disable-authentication=false")
+        intercept[Exception] {
+          asOther.Results.listCollections()
+        }
+      }
+      val asRoot = scarango.withDatabase(databaseName)
+      part("Not allowed to connect with root") {
+        context("Assuming disable-authentication=false")
+        intercept[Exception] {
+          asRoot.Results.listCollections()
+        }
+      }
+
+      part("Removing database") {
+        scarango.Results.delete(d.Database(databaseName))
+        context(s"Database removed: $databaseName")
+      }
+    }
+  }
 }

@@ -1,6 +1,7 @@
 package com.auginte.scarango.state
 
 import akka.http.scaladsl.model.headers.{BasicHttpCredentials, RawHeader}
+import com.auginte.scarango.request.raw.create.User
 
 /**
  * Wrapper for login
@@ -31,5 +32,5 @@ class Authorisation(val user: String, val password: String) {
 object Authorisation {
   def default = new Authorisation("root", "")
 
-//  def forUser(user: User) = new Authorisation(user.name, user.password)
+  def forUser(user: User) = new Authorisation(user.username, user.passwd)
 }
