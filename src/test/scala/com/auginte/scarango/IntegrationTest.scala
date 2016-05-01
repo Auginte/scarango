@@ -3,10 +3,10 @@ package com.auginte.scarango
 import akka.stream.scaladsl.{Sink, Source}
 import com.auginte.scarango.common.{CollectionStatuses, CollectionTypes}
 import com.auginte.scarango.helpers.AkkaSpec
-import com.auginte.scarango.request.raw.{create => c}
-import com.auginte.scarango.request.raw.{delete => d}
 import com.auginte.scarango.request.raw.query.simple.All
-import com.auginte.scarango.response.raw.{list => rl}
+import com.auginte.scarango.request.raw.{create => c, delete => d, get => g}
+import com.auginte.scarango.response.raw.query.{simple => rqs}
+import spray.json.DefaultJsonProtocol
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -238,7 +238,7 @@ class IntegrationTest extends AkkaSpec {
             inCreatedDb.Results.create(c.Collection(collectionName))
             context(s"New collection: $collectionName in $databaseName")
           }
-          val collections = commented("Listing collections") {
+          val collections = subCommented("Listing collections") {
             inCreatedDb.Results.listCollections()
           }
           sub("Comparing basic response from the list of database collections") {
@@ -304,6 +304,23 @@ class IntegrationTest extends AkkaSpec {
         val newDocument = commented("Creating new document") {
           val rawData = s"""{"Hello": "New"}"""
           scarango.Results.create(c.Document(rawData, collectionName))
+        }
+        context(s"New document created: ${newDocument._id}")
+        part("Reading document by key") {
+          val document = scarango.Results.get(g.Document(collectionName, newDocument._key))
+          assert(newDocument._key === document.key)
+          assert(rqs.Document.jsToString(document.fields("Hello")) === "New")
+          assert(document.compactPrint === s"""{"Hello":"New","_id":"${document.id}","_rev":"${document.revision}","_key":"${document.key}"}""")
+          context(s"Document content: $document")
+          sub("Converting to object") {
+            case class HelloDocument(Hello: String, _id: String)
+            import DefaultJsonProtocol._
+            implicit def HelloDocumentFormatter = jsonFormat2(HelloDocument)
+            val helloDocument = document.convertTo[HelloDocument]
+            assert(helloDocument.Hello === "New")
+            assert(helloDocument._id === newDocument._id)
+            context(s"Object: $helloDocument")
+          }
         }
         part("Removing newly created document") {
           val deleted = scarango.Results.delete(d.Document(collectionName, newDocument._key))

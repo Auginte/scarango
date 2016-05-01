@@ -46,6 +46,11 @@ package object response {
     Unmarshal(response.entity).to[raw.query.simple.All].map(_.result)
   }
 
+  def toDocument(implicit context: Context): (HttpResponse) => Future[raw.query.simple.Document] = { response =>
+    implicit val (s, m, e) = implicits(context)
+    Unmarshal(response.entity).to[raw.query.simple.Document]
+  }
+
   def toDatabases(implicit context: Context): (HttpResponse) => Future[raw.list.Databases] = { response =>
     implicit val (s, m, e) = implicits(context)
     Unmarshal(response.entity).to[raw.list.Databases]

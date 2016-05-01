@@ -10,10 +10,12 @@ class Document(fields: Map[String, JsValue]) extends JsObject(fields) {
   def revision = fieldToString("_rev")
   def key = fieldToString("_key")
 
-  private def jsToString(value: JsValue): String = value match {
+  private def fieldToString(key: String) = Document.jsToString(fields(key))
+}
+
+object Document {
+  def jsToString(value: JsValue): String = value match {
     case JsString(s) => s
     case other => other.toString
   }
-
-  private def fieldToString(key: String) = jsToString(fields(key))
 }

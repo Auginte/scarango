@@ -42,8 +42,10 @@ trait AkkaSpec extends WordSpec with ScalaFutures {
   }
   def sub(message: String)(f: => Any): Unit = part("  " + message)(f)
 
+  def subCommented[A](message: String)(f: => A): A = commented[A]("  " + message)(f)
+
   def commented[A](message: String)(f: => A): A = {
-    info("  " + message)
+    info(message)
     f
   }
 

@@ -5,13 +5,14 @@ import akka.stream.scaladsl._
 import akka.util.ByteString
 import com.auginte.scarango.request.raw.{create => cr}
 import com.auginte.scarango.request.raw.{delete => dl}
+import com.auginte.scarango.request.raw.{get => gt}
 import com.auginte.scarango.request.raw.query.simple.All
 
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 
 /**
-  * Wrapper for ArrangoDB REST API.
+  * Wrapper for ArangoDB REST API.
   */
 case class Scarango(context: Context = Context.default) {
   implicit val system = context.actorSystem
@@ -61,6 +62,10 @@ case class Scarango(context: Context = Context.default) {
       .via(state.database)
       .map(response.toSimpleQueryResult)
 
+    def get(document: gt.Document) = Source.single(request.get(document))
+      .via(state.database)
+      .map(response.toDocument)
+
     def iterator(all: All) = Source.single(request.query(all))
       .via(state.database)
       .map(response.toDocumentIterator)
@@ -93,6 +98,8 @@ case class Scarango(context: Context = Context.default) {
 
     def query(all: All) = Flows.query(all).runWith(Sink.head).flatMap(lower)
 
+    def get(document: gt.Document) = Flows.get(document).runWith(Sink.head).flatMap(lower)
+
     def iterator(all: All) = Flows.iterator(all)
 
     def delete(database: dl.Database) = Flows.delete(database).runWith(Sink.head).flatMap(lower)
@@ -116,6 +123,8 @@ case class Scarango(context: Context = Context.default) {
     def create(document: cr.Document) = Await.result(Futures.create(document), context.waitTime)
 
     def query(all: All) = Await.result(Futures.query(all), context.waitTime)
+
+    def get(document: gt.Document) = Await.result(Futures.get(document), context.waitTime)
 
     def iterator(all: All) =
       Await.result(Futures.iterator(all).flatMapConcat(Source.fromFuture).runWith(Sink.head).map(_.iterator), context.waitTime)
