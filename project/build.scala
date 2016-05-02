@@ -3,17 +3,15 @@ import sbt._
 
 object build extends sbt.Build {
   val buildName = "scarango"
-  val buildVersion = "0.3.1-SNAPSHOT"
+  val buildVersion = "0.3.1"
   val buildScalaVersion = "2.11.8"
   val buildOptions = Seq("-feature", "-unchecked", "-deprecation", "-encoding", "utf8")
 
-  val akkaVersion = "2.3.12"
-  val sprayVersion = "1.3.3"
+  val akkaVersion = "2.4.4"
   val buildDependencies = Seq(
-    "com.typesafe.akka" % "akka-actor_2.11" % akkaVersion,
-    "io.spray" %% "spray-client" % sprayVersion,
-    "io.spray" %% "spray-json" % "1.3.2",
-    "com.auginte" %% "scarango-macros" % "0.2.2", // See scarango-macros folder
+    "com.typesafe.akka" %% "akka-http-core" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http-experimental" % akkaVersion,
+    "com.typesafe.akka" %% "akka-http-spray-json-experimental" % akkaVersion,
     "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test"
   )
 

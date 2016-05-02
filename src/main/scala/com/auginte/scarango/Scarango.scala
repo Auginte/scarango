@@ -1,156 +1,204 @@
 package com.auginte.scarango
 
-import akka.actor.{Actor, ActorRef}
-import akka.io.IO
-import akka.io.Tcp.Close
-import com.auginte.scarango.common.AkkaLogging
-import com.auginte.scarango.errors.{UnexpectedRequest, ConnectionError, UnexpectedResponse}
-import com.auginte.scarango.request.Request
-import com.auginte.scarango.response.RestApiProcessor
-import spray.can.Http
-import spray.http.{HttpMessage, HttpResponse}
+import akka.NotUsed
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.stream.scaladsl._
+import akka.util.ByteString
+import com.auginte.scarango.request.Requests
+import com.auginte.scarango.request.raw.create.User
+import com.auginte.scarango.request.raw.{create => cr}
+import com.auginte.scarango.request.raw.{delete => dl}
+import com.auginte.scarango.request.raw.{get => gt}
+import com.auginte.scarango.request.raw.query.simple.All
+import com.auginte.scarango.response.Responses
+import com.auginte.scarango.response.raw.query.simple.Document
 
-import scala.collection.immutable.Queue
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success, Try}
 
 /**
- * Actor for ArrangoDB REST API.
- *
- * Routes messages and manages connection to ArrangoDB REST api.
- *
- * On error [[com.auginte.scarango.errors.UnprocessedRequest]] is returned and next request is processed.
- * It is up to client to handle error and resend.
- *
- * For other errors, [[com.auginte.scarango.errors.ScarangoError]] is returned to client.
- * For client actor errors, debug information is saved to `akka` logs.
- */
-class Scarango extends Actor with AkkaLogging {
-  private var connectionEstablished = false
-  private var dbReadyToReceive = false
-  // Not in the middle of transmission
-  private var dbConnection: Option[ActorRef] = None
-  private var queue: Queue[Packet] = Queue()
+  * Wrapper for ArangoDB REST API.
+  *
+  * Trait encapsulates common functions among all implementations of ArangoDB API wrappers
+  *
+  * @see [[ScarangoStreams]]
+  * @see [[ScarangoFutures]]
+  * @see [[ScarangoAwait]]
+  */
+trait Scarango {
+  protected def implicits(context: Context) = (context.actorSystem, context.materializer, context.actorSystem.dispatcher, context)
 
-  // Main flow:
-  //  User request     -> Queue -> Connection -> ArangoDB REST API
-  //                               Connection <- ArangoDB REST API
-  //                      Queue ---------------> ArangoDB REST API
-  //  Response to user <- Queue <--------------- ArangoDB REST API
-  //  User finishes                Connection -> ArangoDB REST API
+  def toStreams: ScarangoStreams
+  def toFutures: ScarangoFutures
+  def toAwait: ScarangoAwait
 
-  private case class Packet(client: ActorRef, request: Request)
+  def withDatabase(newName: String): Scarango
+  def withUser(user: User): Scarango
 
-  override def receive: Receive = {
-    case r: Request =>
-      debug("Saving request", r)
-      requestToQueue(sender(), r)
-      requestToDatabase()
+  def context: Context
+}
 
-    case Http.Connected(remote, local) =>
-      debug("Connected to ArangoDB", local, remote)
-      dbReadyToReceive = true
-      updateHost(sender())
-      requestToDatabase()
+/**
+  * Common constructors for ArangoDB wrapper
+  */
+object Scarango {
+  def newStreams(context: Context = Context.default) = new ScarangoStreams(context)
+  def newFutures(context: Context = Context.default) = newStreams(context).toFutures
+  def newAwait(context: Context = Context.default) = newFutures(context).toAwait
+}
 
-    case raw: HttpResponse if raw.status.isSuccess =>
-      debug("Received", raw.entity)
-      dbReadyToReceive = true
-      responseToClient(raw)
-      requestToDatabase()
+/**
+  * Implementing ArangoDB API using reactive streams (flows)
+  *
+  * @param context current database, authetntication and other state parameters
+  */
+case class ScarangoStreams(context: Context = Context.default) extends Scarango {
+  implicit val (_s, _m, _d, _c) = implicits(context)
 
-    case raw: HttpResponse if raw.status.isFailure =>
-      debug("Received error", raw.status)
-      dbReadyToReceive = true
-      errorToClient(raw)
-      requestToDatabase()
+  override def toStreams: ScarangoStreams = this
+  override def toFutures: ScarangoFutures = new ScarangoFutures(this)
+  override def toAwait: ScarangoAwait = new ScarangoAwait(toFutures)
 
-    case request if isClientMessage(sender(), request) =>
-      debug("Unsupported client request. Rejecting", request)
-      sender() ! new UnexpectedRequest(request)
+  def withDatabase(newName: String) = new ScarangoStreams(context.withDatabase(newName))
+  def withUser(user: User) = new ScarangoStreams(context.withAuthorisation(user))
 
-    case connectionData if queue.nonEmpty =>
-      debug("Received unexpected", connectionData)
-      errorToClient(connectionData)
-
-    case other =>
-      error("Unexpected state", other)
-  }
-
-  private def requestToQueue(client: ActorRef, request: Request): Unit = {
-    queue = queue.enqueue(Packet(client, request))
-    debug("Saved to queue", request, queue.size)
-  }
-
-  private def requestToDatabase(): Unit = dbConnection match {
-    case Some(connection) if connectionEstablished && dbReadyToReceive => queue.dequeueOption match {
-      case Some((packet, tail)) =>
-        debug("Sending", packet.request.method, packet.request.entity.asString, packet.request.uri)
-        dbReadyToReceive = false
-        connection ! packet.request.http
-      case None =>
-        debug("Queue empty. Waiting")
+  private def debugResponse(response: HttpResponse): HttpResponse = {
+    response.entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String).onComplete{
+      case Success(s) => println(s)
+      case Failure(e) => println("EXCEPTION: " +e)
     }
-    case Some(connection) if !connectionEstablished =>
-      debug("Still connecting... Keeping queue the same", connection)
-    case Some(connection) if !dbReadyToReceive =>
-      debug("Database still processing... Keeping queue the same", queue.headOption)
-    case None =>
-      debug("Connecting to ArangoDB")
-      implicit val system = context.system
-      val restApi = IO(Http)
-      dbConnection = Some(restApi)
-      restApi ! Http.Connect("127.0.0.1", port = 8529)
+    response
   }
 
-  private def updateHost(connectionActor: ActorRef): Unit = {
-    dbConnection = Some(connectionActor)
-    connectionEstablished = true
+  private def source[T](element: T): Source[T, NotUsed] = Source.single(element)
+
+  private def flow[T](input: HttpRequest, converter: (HttpResponse) => Future[T]) =
+    source(input).via(state.database).map (converter)
+
+
+  //
+  // API coverage
+  //
+
+  val version =  flow(Requests.getVersion, Responses.toVersion)
+
+  val databases = flow(Requests.listDatabases, Responses.toDatabases)
+
+  val collections = flow(Requests.listCollections, Responses.toCollections)
+
+  def create(collection: cr.Collection) = flow(Requests.create(collection), Responses.toCollectionCreated)
+
+  def create(database: cr.Database) = flow(Requests.create(database), Responses.toDatabaseCreated)
+
+  def create(document: cr.Document) = flow(Requests.create(document), Responses.toDocumentCreated)
+
+  def query(all: All) = flow(Requests.query(all), Responses.toSimpleQueryResult)
+
+  def get(document: gt.Document) = flow(Requests.get(document), Responses.toDocument)
+
+  def iterator(all: All) = flow(Requests.query(all), Responses.toDocumentIterator)
+
+  def delete(database: dl.Database) = flow(Requests.delete(database), Responses.toDatabaseDeleted)
+
+  def delete(collection: dl.Collection) = flow(Requests.delete(collection), Responses.toCollectionDeleted)
+
+  def delete(document: dl.Document) = flow(Requests.delete(document), Responses.toDocumentDeleted)
+}
+
+/**
+  * Implementing ArangoDB API using features (thread level)
+  *
+  * @param flows delegating current database, authentication and other state parameters
+  */
+case class ScarangoFutures(flows: ScarangoStreams) extends Scarango {
+  def context = flows.context
+  implicit val (_s, _m, _d, _c) = implicits(context)
+
+  override def toStreams: ScarangoStreams = flows
+  override def toFutures: ScarangoFutures = this
+  override def toAwait: ScarangoAwait = new ScarangoAwait(toFutures)
+
+  def withDatabase(newName: String) = new ScarangoFutures(flows.withDatabase(newName))
+  def withUser(user: User) = new ScarangoFutures(flows.withUser(user))
+
+  /** Future[Future[A]] comes from request + data chunk. We need documents per request */
+  private def lower[A](data: Future[A]) = data
+
+  //
+  // API coverage
+  //
+
+  def version() = flows.version.runWith(Sink.head).flatMap(lower)
+
+  def listDatabases() = flows.databases.runWith(Sink.head).flatMap(lower)
+
+  def listCollections() = flows.collections.runWith(Sink.head).flatMap(lower)
+
+  def create(database: cr.Database) = flows.create(database).runWith(Sink.head).flatMap(lower)
+
+  def create(collection: cr.Collection) = flows.create(collection).runWith(Sink.head).flatMap(lower)
+
+  def create(document: cr.Document) = flows.create(document).runWith(Sink.head).flatMap(lower)
+
+  def query(all: All) = flows.query(all).runWith(Sink.head).flatMap(lower)
+
+  def get(document: gt.Document) = flows.get(document).runWith(Sink.head).flatMap(lower)
+
+  def iterator(all: All) = flows.iterator(all).runWith(Sink.head).flatMap(lower)
+
+  def delete(database: dl.Database) = flows.delete(database).runWith(Sink.head).flatMap(lower)
+
+  def delete(collection: dl.Collection) = flows.delete(collection).runWith(Sink.head).flatMap(lower)
+
+  def delete(document: dl.Document) = flows.delete(document).runWith(Sink.head).flatMap(lower)
+}
+
+/**
+  * Implementing ArangoDB API using blocked theads (will wait until result)
+  *
+  * @param futures delegating current database, authentication and other state parameters
+  */
+class ScarangoAwait(futures: ScarangoFutures) extends Scarango {
+  def context = futures.context
+  implicit val (_s, _m, _d, _c) = implicits(context)
+
+  override def toStreams: ScarangoStreams = futures.flows
+  override def toFutures: ScarangoFutures = futures
+  override def toAwait: ScarangoAwait = this
+
+  def withDatabase(newName: String) = new ScarangoAwait(futures.withDatabase(newName))
+  def withUser(user: User) = new ScarangoAwait(futures.withUser(user))
+
+  private def await[T](future: Future[Try[T]]): T = Await.result(future, context.waitTime) match {
+    case Success(data) => data
+    case Failure(f) => throw f
   }
 
-  private def responseToClient(raw: HttpResponse): Unit = queue.dequeueOption match {
-    case Some((Packet(client, request), tail)) =>
-      val parsed = RestApiProcessor.process(request, raw)
-      debug("Parsed", parsed)
-      client ! parsed
-      queue = tail
-    case None =>
-      error("No client to receive", raw)
-  }
+  //
+  // API coverage
+  //
 
-  private def errorToClient(raw: HttpResponse): Unit = queue.dequeueOption match {
-    case Some((Packet(client, request), tail)) =>
-      debug("Pass to client to handle", request)
-      client ! UnexpectedResponse(raw, request)
-      queue = tail
-    case None =>
-      error("No client to recover from ArangoDB API error", raw)
-  }
+  def version() = await(futures.version())
 
-  private def errorToClient(raw: Any): Unit = queue.dequeueOption match {
-    case Some((Packet(client, request), tail)) =>
-      debug("Pass to client to handle", request)
-      client ! ConnectionError(raw, request)
-      queue = tail
-    case None =>
-      error("No client to recover from ArangoDB connection error", raw)
-  }
+  def listDatabases() = await(futures.listDatabases())
 
-  private def isClientMessage(sender: ActorRef, message: Any) = dbConnection match {
-    case Some(connection) => connection != sender
-    case None => message match {
-      case _: HttpMessage => false
-      case _ => true
-    }
-  }
+  def listCollections() = await(futures.listCollections())
 
-  @throws[Exception](classOf[Exception])
-  override def postStop(): Unit = {
-    dbConnection match {
-      case Some(connection) if connectionEstablished =>
-        debug("Closing ArangoDb connection")
-        dbConnection.get ! Close
-      case None =>
-        debug("ArangoDb connection already closed")
-    }
-    super.postStop()
-  }
+  def create(database: cr.Database) = await(futures.create(database))
+
+  def create(collection: cr.Collection) = await(futures.create(collection))
+
+  def create(document: cr.Document) = await(futures.create(document))
+
+  def query(all: All) = await(futures.query(all))
+
+  def get(document: gt.Document) = await(futures.get(document))
+
+  def iterator(all: All) = await[Iterator[Document]](futures.iterator(all))
+
+  def delete(database: dl.Database) = await(futures.delete(database))
+
+  def delete(collection: dl.Collection) = await(futures.delete(collection))
+
+  def delete(document: dl.Document) = await(futures.delete(document))
 }

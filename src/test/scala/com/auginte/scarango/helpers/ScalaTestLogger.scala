@@ -4,8 +4,11 @@ import akka.actor._
 import akka.event.Logging
 import akka.event.Logging.{Error, InitializeLogger, LogEvent, LogLevel, LoggerInitialized}
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 class ScalaTestLogger extends Actor {
   override def receive: Receive = {
@@ -30,10 +33,8 @@ class ScalaTestLogger extends Actor {
         case other =>
           proxy.alert(s"[${level(other.level)}] ${other.message}")
       }
-      val a = event
       proxy.lastSystem.foreach { system =>
-        system.shutdown()
-        system.awaitTermination(10 seconds)
+        system.terminate()
       }
       proxy.fail("Error in logs")
     case None =>

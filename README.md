@@ -1,25 +1,35 @@
 Just another Scala driver for ArangoDB
 ======================================
 
-[![Build Status](https://secure.travis-ci.org/Auginte/scarango.png?branch=master)](http://travis-ci.org/Auginte/scarango)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.auginte/scarango_2.11/badge.svg)](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.4|)
+[![Build Status](https://api.travis-ci.org/Auginte/scarango.png?branch=master)](http://travis-ci.org/Auginte/scarango)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.auginte/scarango_2.11/badge.svg)](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.3.1|)
 
-Actor based Scala driver/client for ArangoDB.
-This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and spray.io.
+Reactive streams based Scala driver/client for ArangoDB.
+This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and Akka streams and spray JSON.
 
 Stability
 ---------
 
 **This is early version**. Functionality:
 
-* **Database**: Create, List, Remove, ~~by user~~, with user data 
-* **Collection**: Create, ~~List~~, Read (status, type, ~~properties~~, ~~count~~, ~~statistics~~), Remove, ~~(un)laod~~, ~~truncate~~, ~~rotate~~, ~~rename~~
-* **Document**: Create, List, Read, ~~Update~~, Remove, ~~Test~~
-* ~~Query, Cursor, Explain~~
-* ~~Graph, edge, edges~~~
-* ~~Batch, Index~~
-* ~~Export, replicate~~
-* Version, ~~WAL, System, Tasks, Log~~
+ * Administration: version, ~~statistics~~, ~~tasks~~, ~~etc~~
+ * AQL: ~~CRUD~~, ~~etc~~
+ * Bulk: ~~exectute~~, ~~import~~, ~~export~~, ~~etc~~
+ * Cluster: ~~CRUD~~, ~~etc~~ 
+ * Collections: Create, List, ~~Get~~, ~~Update~~, Delete, ~~etc~~ 
+ * Cursors: ~~Create~~, ~~Delete~~, ~~Read~~
+ * Database: Create (with users), List, ~~Get~~, Delete
+ * Documents: Create, Get, ~~List~~, Replace, ~~Patch~~, Delete, ~~etc~~  
+ * Graph: ~~CRUD~~, ~~etc~~ 
+ * Graph edges: ~~CRUD~~, ~~etc~~ 
+ * Graph Traversal: ~~Exectute~~ 
+ * Indexes: ~~Create(SkipList, CapacityConstrain, Fulltext, General, Geo, Hash), Read, Get, Delete~~  
+ * Job: ~~List, Get, etc~~ 
+ * Replication: ~~CRUD~~, ~~etc~~
+ * Simple Queries: Get(All, ~~any~~, ~~byExample~~, ~~etc~~), ~~Remove~~, ~~Update~~ 
+ * Transactions: ~~Execute~~ 
+ * User handling: ~~Create, List, Fetch, Replace, Remove~~ 
+ * Write ahead log: ~~Get, Update Flush~~  
 
 Usage
 -----
@@ -32,7 +42,7 @@ resolvers += "Sonatype OOS" at "https://oss.sonatype.org/content/repositories/re
 
 sbt:
 ```scala
-libraryDependencies += "com.auginte" % "scarango_2.11" % "0.2.4"
+libraryDependencies += "com.auginte" % "scarango_2.11" % "0.3.1"
 ```
 
 Maven:
@@ -40,10 +50,10 @@ Maven:
 <dependency>
   <groupId>com.auginte</groupId>
   <artifactId>scarango_2.11</artifactId>
-  <version>0.2.4</version>
+  <version>0.3.1-SNAPSHOT</version>
 </dependency>
 ```
-or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.4|)
+or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.3.1|)
 
 Examples
 --------
@@ -56,17 +66,21 @@ Why another driver
 
 This client/driver concentrates on faster/easier development of
 
-* Akka/spray based applications
+* Reactive streams/non-blocking applications
 * Graph intensive applications
 
 *Development still in progress*
 
-Architecture concepts
----------------------
+Older versions
+--------------
 
-* Interacting with ArangoDB via Scarango Actor (reuse open HTTP connection)
-* All operations/actor messages grouped into requests, response and error packages
-* Use strong types for names of Databases and Collections, so currently used names be given implicitly 
+[v0.2.4](https://github.com/Auginte/scarango/tree/v0.2.4) was last version,
+that was based on Spray 1.x version.
+
+All later versions are based on Akka Http (Spray 2.x)
+and are **not** back-compatible with Spray 1.x
+
+For details see [Changelog](CHANGELOG.md) or use `git diff` :smirk:
 
 Similar projects
 ----------------
