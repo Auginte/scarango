@@ -50,7 +50,7 @@ Maven:
 <dependency>
   <groupId>com.auginte</groupId>
   <artifactId>scarango_2.11</artifactId>
-  <version>0.3.1-SNAPSHOT</version>
+  <version>0.3.1</version>
 </dependency>
 ```
 or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.3.1|)
