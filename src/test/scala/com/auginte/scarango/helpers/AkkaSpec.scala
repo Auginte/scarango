@@ -12,6 +12,7 @@ import spray.json.{JsObject, JsValue}
 
 import scala.concurrent.Future
 import scala.language.postfixOps
+import scala.util.{Failure, Success, Try}
 
 trait AkkaSpec extends WordSpec with ScalaFutures {
   def testConfig = ConfigFactory.parseString(
@@ -31,6 +32,11 @@ trait AkkaSpec extends WordSpec with ScalaFutures {
 
   implicit val defaultPatience =
     PatienceConfig(timeout = Span(4, Seconds), interval = Span(500, Millis))
+
+  def delayAndExpectSuccess[A](result: Future[Try[A]])(test: A => Any) = whenReady(result){
+    case Success(data) => test(data)
+    case Failure(e) => fail("Scarango response with error", e)
+  }
 
   def withDelay[A](result: Future[A])(test: A => Any) = whenReady(result)(test)
 

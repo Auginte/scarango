@@ -1,16 +1,20 @@
 package com.auginte.scarango
 
-import akka.http.scaladsl.model.HttpResponse
+import akka.NotUsed
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.scaladsl._
 import akka.util.ByteString
+import com.auginte.scarango.request.Requests
 import com.auginte.scarango.request.raw.create.User
 import com.auginte.scarango.request.raw.{create => cr}
 import com.auginte.scarango.request.raw.{delete => dl}
 import com.auginte.scarango.request.raw.{get => gt}
 import com.auginte.scarango.request.raw.query.simple.All
+import com.auginte.scarango.response.Responses
+import com.auginte.scarango.response.raw.query.simple.Document
 
 import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
   * Wrapper for ArangoDB REST API.
@@ -66,57 +70,39 @@ case class ScarangoStreams(context: Context = Context.default) extends Scarango 
     response
   }
 
+  private def source[T](element: T): Source[T, NotUsed] = Source.single(element)
+
+  private def flow[T](input: HttpRequest, converter: (HttpResponse) => Future[T]) =
+    source(input).via(state.database).map (converter)
+
+
   //
   // API coverage
   //
 
-  val version = Source.single(request.getVersion)
-    .via(state.database)
-    .map (response.toVersion)
+  val version =  flow(Requests.getVersion, Responses.toVersion)
 
-  val databases = Source.single(request.listDatabases)
-    .via(state.database)
-    .map (response.toDatabases)
+  val databases = flow(Requests.listDatabases, Responses.toDatabases)
 
-  val collections = Source.single(request.listCollections)
-    .via(state.database)
-    .map (response.toCollections)
+  val collections = flow(Requests.listCollections, Responses.toCollections)
 
-  def create(collection: cr.Collection) = Source.single(request.create(collection))
-    .via(state.database)
-    .map(response.toCollectionCreated)
+  def create(collection: cr.Collection) = flow(Requests.create(collection), Responses.toCollectionCreated)
 
-  def create(database: cr.Database) = Source.single(request.create(database))
-    .via(state.database)
-    .map(response.toDatabaseCreated)
+  def create(database: cr.Database) = flow(Requests.create(database), Responses.toDatabaseCreated)
 
-  def create(document: cr.Document) = Source.single(request.create(document))
-    .via(state.database)
-    .map(response.toDocumentCreated)
+  def create(document: cr.Document) = flow(Requests.create(document), Responses.toDocumentCreated)
 
-  def query(all: All) = Source.single(request.query(all))
-    .via(state.database)
-    .map(response.toSimpleQueryResult)
+  def query(all: All) = flow(Requests.query(all), Responses.toSimpleQueryResult)
 
-  def get(document: gt.Document) = Source.single(request.get(document))
-    .via(state.database)
-    .map(response.toDocument)
+  def get(document: gt.Document) = flow(Requests.get(document), Responses.toDocument)
 
-  def iterator(all: All) = Source.single(request.query(all))
-    .via(state.database)
-    .map(response.toDocumentIterator)
+  def iterator(all: All) = flow(Requests.query(all), Responses.toDocumentIterator)
 
-  def delete(database: dl.Database) = Source.single(request.delete(database))
-    .via(state.database)
-    .map(response.toDatabaseDeleted)
+  def delete(database: dl.Database) = flow(Requests.delete(database), Responses.toDatabaseDeleted)
 
-  def delete(collection: dl.Collection) = Source.single(request.delete(collection))
-    .via(state.database)
-    .map(response.toCollectionDeleted)
+  def delete(collection: dl.Collection) = flow(Requests.delete(collection), Responses.toCollectionDeleted)
 
-  def delete(document: dl.Document) = Source.single(request.delete(document))
-    .via(state.database)
-    .map(response.toDocumentDeleted)
+  def delete(document: dl.Document) = flow(Requests.delete(document), Responses.toDocumentDeleted)
 }
 
 /**
@@ -158,7 +144,7 @@ case class ScarangoFutures(flows: ScarangoStreams) extends Scarango {
 
   def get(document: gt.Document) = flows.get(document).runWith(Sink.head).flatMap(lower)
 
-  def iterator(all: All) = flows.iterator(all)
+  def iterator(all: All) = flows.iterator(all).runWith(Sink.head).flatMap(lower)
 
   def delete(database: dl.Database) = flows.delete(database).runWith(Sink.head).flatMap(lower)
 
@@ -183,32 +169,36 @@ class ScarangoAwait(futures: ScarangoFutures) extends Scarango {
   def withDatabase(newName: String) = new ScarangoAwait(futures.withDatabase(newName))
   def withUser(user: User) = new ScarangoAwait(futures.withUser(user))
 
+  private def await[T](future: Future[Try[T]]): T = Await.result(future, context.waitTime) match {
+    case Success(data) => data
+    case Failure(f) => throw f
+  }
+
   //
   // API coverage
   //
 
-  def version() = Await.result(futures.version(), context.waitTime)
+  def version() = await(futures.version())
 
-  def listDatabases() = Await.result(futures.listDatabases(), context.waitTime)
+  def listDatabases() = await(futures.listDatabases())
 
-  def listCollections() = Await.result(futures.listCollections(), context.waitTime)
+  def listCollections() = await(futures.listCollections())
 
-  def create(database: cr.Database) = Await.result(futures.create(database), context.waitTime)
+  def create(database: cr.Database) = await(futures.create(database))
 
-  def create(collection: cr.Collection) = Await.result(futures.create(collection), context.waitTime)
+  def create(collection: cr.Collection) = await(futures.create(collection))
 
-  def create(document: cr.Document) = Await.result(futures.create(document), context.waitTime)
+  def create(document: cr.Document) = await(futures.create(document))
 
-  def query(all: All) = Await.result(futures.query(all), context.waitTime)
+  def query(all: All) = await(futures.query(all))
 
-  def get(document: gt.Document) = Await.result(futures.get(document), context.waitTime)
+  def get(document: gt.Document) = await(futures.get(document))
 
-  def iterator(all: All) =
-    Await.result(futures.iterator(all).flatMapConcat(Source.fromFuture).runWith(Sink.head).map(_.iterator), context.waitTime)
+  def iterator(all: All) = await[Iterator[Document]](futures.iterator(all))
 
-  def delete(database: dl.Database) = Await.result(futures.delete(database), context.waitTime)
+  def delete(database: dl.Database) = await(futures.delete(database))
 
-  def delete(collection: dl.Collection) = Await.result(futures.delete(collection), context.waitTime)
+  def delete(collection: dl.Collection) = await(futures.delete(collection))
 
-  def delete(document: dl.Document) = Await.result(futures.delete(document), context.waitTime)
+  def delete(document: dl.Document) = await(futures.delete(document))
 }

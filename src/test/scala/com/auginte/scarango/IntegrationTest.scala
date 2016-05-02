@@ -3,13 +3,16 @@ package com.auginte.scarango
 import akka.stream.scaladsl.{Sink, Source}
 import com.auginte.scarango.common.{CollectionStatuses, CollectionTypes}
 import com.auginte.scarango.helpers.AkkaSpec
+import com.auginte.scarango.request.Requests
 import com.auginte.scarango.request.raw.query.simple.All
 import com.auginte.scarango.request.raw.{create => c, delete => d, get => g}
+import com.auginte.scarango.response.Responses
 import com.auginte.scarango.response.raw.query.{simple => rqs}
 import spray.json.DefaultJsonProtocol
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 /**
   * Testing integration with ArangoDB
@@ -20,7 +23,7 @@ class IntegrationTest extends AkkaSpec {
       assert(scarango.version().version === latestApiVersion)
     }
     "have future for common situations" in withFuturesDriver { scarango =>
-      withDelay {
+      delayAndExpectSuccess {
         scarango.version()
       } { raw =>
         assert(raw.version === latestApiVersion)
@@ -32,7 +35,7 @@ class IntegrationTest extends AkkaSpec {
       implicit val system = context.actorSystem
       implicit val materializer = context.materializer
       val scarango = Scarango.newStreams(context)
-      withDelay {
+      delayAndExpectSuccess {
         scarango.version.runWith(Sink.head).flatMap(same => same)
       } { raw =>
         assert(raw.version === latestApiVersion)
@@ -44,14 +47,16 @@ class IntegrationTest extends AkkaSpec {
       implicit val system = context.actorSystem
       implicit val materializer = context.materializer
       withDelay {
-        Source.single(request.getVersion)
+        Source.single(Requests.getVersion)
           .via(state.database)
-          .map(response.toVersion)
+          .map(Responses.toVersion)
           .runWith(Sink.head)
           .flatMap(same => same)
-      } { raw =>
-        assert(raw.version === latestApiVersion)
-        assert(raw.server === "arango")
+      } {
+        case Success(raw) =>
+          assert(raw.version === latestApiVersion)
+          assert(raw.server === "arango")
+        case Failure(e) => fail("Expcetion from stream", e)
       }
     }
     "can receive RAW JSON response from ArangoDb" in {
@@ -59,9 +64,9 @@ class IntegrationTest extends AkkaSpec {
       implicit val system = context.actorSystem
       implicit val materializer = context.materializer
       withDelay {
-        Source.single(request.getVersion)
+        Source.single(Requests.getVersion)
           .via(state.database)
-          .map(response.toRaw)
+          .map(Responses.toRaw)
           .runWith(Sink.head)
           .flatMap(same => same)
       } { raw =>
@@ -87,10 +92,11 @@ class IntegrationTest extends AkkaSpec {
   "To interact with database like a streams" should {
     "retrieve records in a (simulated) asynchronous way" in withStreamsDriver { scarango =>
       val collectionName = "with-data" + randomId
-      implicit val context = scarango.context
-      implicit val materializer = context.materializer
+      implicit val scarangoContext = scarango.context
+      implicit val materializer = scarangoContext.materializer
       part("Creating new elements") {
         scarango.toAwait.create(c.Collection(collectionName))
+        context(s"Collection created: $collectionName")
         for (i <- 1 to 20) {
           val rawData = s"""{"Hello": $i}"""
           scarango.toAwait.create(c.Document(rawData, collectionName))
@@ -99,14 +105,21 @@ class IntegrationTest extends AkkaSpec {
       part("Retrieving stored elements") {
         val getAll = All(collectionName)
         val graph = scarango.query(getAll)
-          .map(_.map(_.result))
+          .map(_.map(_.map(_.result)))                                       // Need only documents, not statistics
           .flatMapConcat(Source.fromFuture)
-          .expand(_.iterator)
-        val resultViaIterator = Await.result(graph.map(_.prettyPrint).runReduce(_ + _), 4.seconds)
+          .expand[Try[rqs.Document]]{                                        // Try[Iterable] -> Iterable[Try]
+            case Success(documents) => documents.iterator.map(Success(_))
+            case Failure(e) => List(Failure(e)).toIterator
+          }
+        val resultViaIterator = Await.result(graph.filter(_.isSuccess).map(_.get).map(_.prettyPrint).runReduce(_ + _), 4.seconds)
         val resultOfWhole = scarango.toAwait.query(getAll).result.map(_.prettyPrint).mkString("")
         val resultIterator = scarango.toAwait.iterator(getAll).map(_.prettyPrint).toList.mkString("")
         assert(resultViaIterator === resultOfWhole)
         assert(resultViaIterator === resultIterator)
+      }
+      part("Removing collection") {
+        scarango.toAwait.delete(d.Collection(collectionName))
+        context(s"Collection removed: $collectionName")
       }
     }
   }
@@ -114,7 +127,7 @@ class IntegrationTest extends AkkaSpec {
   "To cover ArangoDB API" when {
     "testing administration part" should {
       "get version of ArangoDB" in withFuturesDriver { scarango =>
-        withDelay {
+        delayAndExpectSuccess {
           scarango.version()
         } { raw =>
           assert(raw.version === latestApiVersion)
@@ -400,10 +413,39 @@ class IntegrationTest extends AkkaSpec {
           asRoot.listCollections()
         }
       }
-
       part("Removing database") {
         scarango.delete(d.Database(databaseName))
         context(s"Database removed: $databaseName")
+      }
+    }
+    "get informative error messages" in withDriver { scarango =>
+      val notExistingDocument = g.Document("notExisting", "documentId")
+      part("Exception thrown, when using in Await level") {
+        intercept[Exception] {
+          scarango.get(notExistingDocument)
+        }
+      }
+      part("Get Try object, when using in Futures level") {
+        val futures = scarango.toFutures.get(notExistingDocument)
+        withDelay(futures) {
+          case Success(s) => fail(s"Expected failure, got: $s")
+          case Failure(e) =>
+            assert(e.isInstanceOf[errors.NotFound])
+            context(s"Caught Failure: $e")
+        }
+      }
+      part("Get Try object, when using in Streams level") {
+        implicit val materialiser = scarango.context.materializer
+        val flow = scarango.toStreams
+          .get(notExistingDocument)
+          .runWith(Sink.head)
+          .flatMap(same => same)
+        withDelay(flow) {
+          case Success(s) => fail(s"Expected failure, got: $s")
+          case Failure(e) =>
+            assert(e.isInstanceOf[errors.NotFound])
+            context(s"Caught Failure: $e")
+        }
       }
     }
   }

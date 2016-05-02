@@ -16,11 +16,14 @@ object Main extends App {
   val scarango = Scarango.newFutures(context)
   val version = scarango.version()
   version.onComplete {
-    case Success(v) =>
-      println(s"Arango db version: ${v.version}")
-      context.actorSystem.terminate()
+    case Success(response) => response match {
+      case Success(v) => println(s"Arango db version: ${v.version}")
+        context.actorSystem.terminate()
+      case Failure(error) => println(s"Failed to get version: $error")
+        context.actorSystem.terminate()
+    }
     case Failure(error) =>
-      println(s"Failed to get version: $error")
+      println(s"Failed to get response: $error")
       context.actorSystem.terminate()
   }
   Await.result(version, 4.seconds)
