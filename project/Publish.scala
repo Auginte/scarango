@@ -1,6 +1,10 @@
 import sbt._
 import Keys._
+import xerial.sbt.Sonatype.SonatypeKeys._
 
+/**
+  * @see https://github.com/xerial/sbt-sonatype
+  */
 object Publish {
   val nexus = "https://oss.sonatype.org/"
 
@@ -8,6 +12,7 @@ object Publish {
     licenses := Seq("Apache 2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     homepage := Some(url("http://scarango.auginte.com/")),
     organization := "com.auginte",
+    sonatypeProfileName := "com.auginte",
 
     publishMavenStyle := true,
     publishArtifact in Test := false,
@@ -19,8 +24,6 @@ object Publish {
       else
         Some("releases" at nexus + "service/local/staging/deploy/maven2")
     },
-
-    credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
 
     pomExtra :=
         <scm>
