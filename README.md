@@ -1,16 +1,14 @@
 Just another Scala driver for ArangoDB
 ======================================
 
-[![Build Status](https://api.travis-ci.org/Auginte/scarango.png?branch=reactive-streams-%231)](http://travis-ci.org/Auginte/scarango)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.auginte/scarango_2.11/badge.svg)](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.4|)
+[![Build Status](https://api.travis-ci.org/Auginte/scarango.png?branch=master)](http://travis-ci.org/Auginte/scarango)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.auginte/scarango_2.11/badge.svg)](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.3.1|)
 
 Reactive streams based Scala driver/client for ArangoDB.
 This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and Akka streams and spray JSON.
 
 Stability
 ---------
-
-**Core parts are being refactored: For stable versions: use `master` branch**
 
 **This is early version**. Functionality:
 
@@ -44,7 +42,7 @@ resolvers += "Sonatype OOS" at "https://oss.sonatype.org/content/repositories/re
 
 sbt:
 ```scala
-libraryDependencies += "com.auginte" % "scarango_2.11" % "0.3.1-SNAPSHOT"
+libraryDependencies += "com.auginte" % "scarango_2.11" % "0.3.1"
 ```
 
 Maven:
@@ -55,7 +53,7 @@ Maven:
   <version>0.3.1-SNAPSHOT</version>
 </dependency>
 ```
-or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.2.4|)
+or [other](http://search.maven.org/#artifactdetails|com.auginte|scarango_2.11|0.3.1|)
 
 Examples
 --------
@@ -68,7 +66,7 @@ Why another driver
 
 This client/driver concentrates on faster/easier development of
 
-* Reactive streams/non-blocking oriented applications
+* Reactive streams/non-blocking applications
 * Graph intensive applications
 
 *Development still in progress*
@@ -81,6 +79,8 @@ that was based on Spray 1.x version.
 
 All later versions are based on Akka Http (Spray 2.x)
 and are **not** back-compatible with Spray 1.x
+
+For details see [Changelog](CHANGELOG.md) or use `git diff` :smirk:
 
 Similar projects
 ----------------
