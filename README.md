@@ -7,6 +7,11 @@ Just another Scala driver for ArangoDB
 Reactive streams based Scala driver/client for ArangoDB.
 This driver is based on [ArangoDB](https://www.arangodb.com/) REST API and Akka streams and spray JSON.
 
+Outdated code NOTICE
+====================
+
+:exclamation: As this project is not actively maintained, you may consider using: https://github.com/outr/scarango ([#5](https://github.com/Auginte/scarango/issues/5))
+
 Stability
 ---------
 
